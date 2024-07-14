@@ -46,4 +46,20 @@ def parse_json(json_str: str) -> dict:
         logging.warning("JSON parsing error")
         return {}
 
+class ExchangeServer:
+
+    def __init__(self):
+        self.client_presence = {}
+
+    def update_client_presence(self, client_jid: str, nickname: str, pubickey: str):
+        self.client_presence[client_jid] = Presence(nickname, client_jid, pubickey)
+
+    def remove_client_presence(self, client_jid: str):
+        self.client_presence.pop(client_jid)
+
+    def get_client_presence(self) -> dict:
+        return self.client_presence
+
+
+
 

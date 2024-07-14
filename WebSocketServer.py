@@ -4,8 +4,11 @@ import threading
 import aiofiles
 import hashlib
 
+import server_exchange
+
 clients = {}
 client_names = {}
+exchange_server = server_exchange.ExchangeServer()
 
 async def load_accounts(filename="theaccounts.txt"):
     accounts = {}
@@ -46,6 +49,7 @@ async def handle_client(websocket):
 
     clients[username] = websocket
     client_names[websocket] = username
+    exchange_server.update_client_presence(username, username, 'tmp')
     welcome_message = f'{username} has joined the chat.\n'
     print(welcome_message)
     await broadcast_message(welcome_message, websocket)
@@ -74,6 +78,7 @@ async def handle_client(websocket):
         await remove_client(websocket)
 
 async def broadcast_message(message, sender_socket):
+    print(exchange_server.get_client_presence())
     for client in clients.values():
         if client != sender_socket:
             try:
@@ -118,6 +123,7 @@ async def remove_client(websocket):
     if username:
         del clients[username]
         del client_names[websocket]
+        exchange_server.remove_client_presence(username)
         print(f"{username} has left the chat.")
         await broadcast_message(f"{username} has left the chat.", websocket)
 
