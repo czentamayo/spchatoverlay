@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass
 import logging
 from typing import List
+import websockets
 
 @dataclass
 class Presence:
@@ -39,7 +40,7 @@ def attendence_json() -> str:
     })
 
 # Convert json string to dict
-def parse_json(json_str: str) -> dict:
+def parse_json(json_str:str) -> dict:
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:
@@ -59,6 +60,26 @@ class ExchangeServer:
 
     def get_client_presence(self) -> dict:
         return self.client_presence
+
+    async def handler(self, websocket:websockets.WebSocketClientProtocol):
+        while True:
+            exchange_json = await websocket.recv()
+            exchange = parse_json(str(exchange_json))
+            exchange_type = exchange.get('tag', None)
+            if exchange_type == 'message':
+                pass
+            elif exchange_type == 'check':
+                await websocket.send(check_json(True))
+            elif exchange_type == 'attendence':
+                await websocket.send(presence_json(list(self.client_presence.values())))
+
+
+
+    def start_server(self):
+        pass
+
+    def stop_server(self):
+        pass
 
 
 
