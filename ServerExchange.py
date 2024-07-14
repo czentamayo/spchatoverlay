@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+import logging
 from typing import List
 
 @dataclass
@@ -36,5 +37,13 @@ def attendence_json() -> str:
     return json.dumps({
         "tag": "attendence"
     })
+
+# Convert json string to dict
+def parse_json(json_str: str) -> dict:
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError:
+        logging.warning("JSON parsing error")
+        return {}
 
 
