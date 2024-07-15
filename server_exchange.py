@@ -5,6 +5,7 @@ from typing import List
 import websockets
 import asyncio
 from websockets.server import serve
+import yaml
 
 
 @dataclass
@@ -78,7 +79,16 @@ class ExchangeServer:
 
 
     async def start_server(self):
-        async with serve(self.exchange_handler, "localhost", 5555):
+        config = {}
+        with open('config.yaml', 'r') as f:
+            try:
+                config = yaml.safe_load(f)
+            except yaml.YAMLError:
+                logging.error('unable to read config yaml file')
+        exchange_server_config = config.get('exchange_server', {})
+        host = exchange_server_config.get('host', 'localhost')
+        port = exchange_server_config.get('port', 5555)
+        async with serve(self.exchange_handler, host, port):
             await asyncio.Future()
 
     def stop_server(self):

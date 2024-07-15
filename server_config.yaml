@@ -1,0 +1,22 @@
+exchange_server:
+  host: localhost
+  port: 5555
+
+remote_serves:
+  - name: s1
+    host: localhost
+    port: 5555
+  - name: s2
+    host: localhost
+    port: 5555
+  - name: s3
+    host: localhost
+    port: 5555
+  - name: s4
+    host: localhost
+    port: 5555
+  - name: s5
+    host: localhost
+    port: 5555
+  
+
