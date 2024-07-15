@@ -140,20 +140,20 @@ async def start_server(stop_event):
     for client in list(clients.values()):
         await client.close()
 
-def listen_for_stop_command(loop, stop_event):
-    while True:
-        command = input()
-        if command.strip().upper() == 'STOP':
-            asyncio.run_coroutine_threadsafe(set_stop_event(stop_event), loop)
-            break
-
-async def set_stop_event(stop_event):
-    stop_event.set()
+# def listen_for_stop_command(loop, stop_event):
+#     while True:
+#         command = input()
+#         if command.strip().upper() == 'STOP':
+#             asyncio.run_coroutine_threadsafe(set_stop_event(stop_event), loop)
+#             break
+#
+# async def set_stop_event(stop_event):
+#     stop_event.set()
 
 def main():
     loop = asyncio.get_event_loop()
     stop_event = asyncio.Event()
-    threading.Thread(target=listen_for_stop_command, args=(loop, stop_event)).start()
+    # threading.Thread(target=listen_for_stop_command, args=(loop, stop_event)).start()
     loop.run_until_complete(start_server(stop_event))
     loop.close()
 
