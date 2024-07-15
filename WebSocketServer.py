@@ -158,4 +158,5 @@ def main():
     loop.close()
 
 if __name__ == '__main__':
+    # asyncio.run(exchange_server.start_server())
     main()

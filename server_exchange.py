@@ -80,7 +80,7 @@ class ExchangeServer:
 
     async def start_server(self):
         config = {}
-        with open('config.yaml', 'r') as f:
+        with open('server_config.yaml', 'r') as f:
             try:
                 config = yaml.safe_load(f)
             except yaml.YAMLError:
