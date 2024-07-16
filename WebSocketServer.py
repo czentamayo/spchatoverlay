@@ -88,6 +88,7 @@ async def broadcast_message(message, sender_socket):
                 await remove_client(client)
 
 async def send_message_to_client(message, sender_username, target_username):
+    print(f"sending to {target_username}")
     if target_username in clients:
         target_socket = clients[target_username]
         try:
@@ -127,18 +128,18 @@ async def remove_client(websocket):
         print(f"{username} has left the chat.")
         await broadcast_message(f"{username} has left the chat.", websocket)
 
-async def start_server(stop_event):
+async def start_server():
     host = 'localhost'
     port = 12345
     server = await websockets.serve(handle_client, host, port)
     print(f'Server started at {host}:{port}')
     
-    await stop_event.wait()
-    server.close()
-    await server.wait_closed()
-
-    for client in list(clients.values()):
-        await client.close()
+    # await stop_event.wait()
+    # server.close()
+    # await server.wait_closed()
+    #
+    # for client in list(clients.values()):
+    #     await client.close()
 
 # def listen_for_stop_command(loop, stop_event):
 #     while True:
@@ -152,9 +153,11 @@ async def start_server(stop_event):
 
 def main():
     loop = asyncio.get_event_loop()
-    stop_event = asyncio.Event()
+    # stop_event = asyncio.Event()
     # threading.Thread(target=listen_for_stop_command, args=(loop, stop_event)).start()
-    loop.run_until_complete(start_server(stop_event))
+    # loop.run_until_complete(start_server(stop_event))
+    loop.run_until_complete(start_server())
+    loop.run_forever()
     loop.close()
 
 if __name__ == '__main__':
