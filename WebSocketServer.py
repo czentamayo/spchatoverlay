@@ -9,6 +9,7 @@ clients = {}
 client_names = {}
 exchange_server = server_exchange.ExchangeServer()
 
+
 async def load_accounts(filename="theaccounts.txt"):
     accounts = {}
     async with aiofiles.open(filename, 'r') as file:
@@ -17,10 +18,12 @@ async def load_accounts(filename="theaccounts.txt"):
             accounts[username] = password
     return accounts
 
+
 async def hash_password(password):
     h = hashlib.sha256()
     h.update(password.encode())
     return h.hexdigest()
+
 
 async def authenticate(websocket):
     try:
@@ -40,6 +43,7 @@ async def authenticate(websocket):
         print("Client disconnected during authentication.")
         return None
 
+
 async def handle_client(websocket):
     username = await authenticate(websocket)
     if not username:
@@ -48,7 +52,7 @@ async def handle_client(websocket):
 
     clients[username] = websocket
     client_names[websocket] = username
-    exchange_server.update_client_presence(username, username, 'tmp')
+    exchange_server.update_presence('LOCAL', username, username, 'tmp')
     welcome_message = f'{username} has joined the chat.\n'
     print(welcome_message)
     await broadcast_message(welcome_message, websocket)
@@ -76,8 +80,9 @@ async def handle_client(websocket):
         print(f'Error: {e}')
         await remove_client(websocket)
 
+
 async def broadcast_message(message, sender_socket):
-    print(exchange_server.get_client_presence())
+    print(exchange_server.get_presences())
     for client in clients.values():
         if client != sender_socket:
             try:
@@ -85,6 +90,7 @@ async def broadcast_message(message, sender_socket):
             except:
                 await client.close()
                 await remove_client(client)
+
 
 async def send_message_to_client(message, sender_username, target_username):
     print(f"sending to {target_username}")
@@ -98,6 +104,7 @@ async def send_message_to_client(message, sender_username, target_username):
     else:
         sender_socket = clients[sender_username]
         await sender_socket.send(f"User {target_username} not found.")
+
 
 async def handle_file_transfer(message, websocket):
     parts = message.split(" ", 2)
@@ -118,14 +125,16 @@ async def handle_file_transfer(message, websocket):
     else:
         await websocket.send(f"User {target_username} not found.")
 
+
 async def remove_client(websocket):
     username = client_names.get(websocket)
     if username:
         del clients[username]
         del client_names[websocket]
-        exchange_server.remove_client_presence(username)
+        exchange_server.remove_presence('LOCAL', username)
         print(f"{username} has left the chat.")
         await broadcast_message(f"{username} has left the chat.", websocket)
+
 
 def start_server():
     host = 'localhost'

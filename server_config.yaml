@@ -2,9 +2,9 @@ exchange_server:
   host: localhost
   port: 5555
 
-remote_serves:
+remote_servers:
   - name: s1
-    host: localhost
+    host: 127.0.0.1
     port: 5555
   - name: s2
     host: localhost

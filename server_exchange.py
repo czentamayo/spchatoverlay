@@ -43,7 +43,8 @@ def check_json(is_response=False) -> str:
 
 # Json containing list of presence, which represents online users and corresponding public keys
 def presence_json(presence_list: List[Presence]) -> str:
-    return json.dumps({"tag": "presence", "presence": presence_list})
+    formated_presence_list = [dict({'nickname': presence.nickname, 'jid': presence.jid, 'pubickey': presence.pubickey}) for presence in presence_list]
+    return json.dumps({"tag": "presence", "presence": formated_presence_list})
 
 
 # Json request for server presence list
@@ -63,18 +64,33 @@ def parse_json(json_str: str) -> dict:
 class ExchangeServer:
 
     def __init__(self):
-        self.client_presence = {}
+        # presences is in format {server_name: {client_jid: Presence}}
+        self.presences = {}
+        self.remote_servers = []
 
-    def update_client_presence(self, client_jid: str, nickname: str, pubickey: str):
-        self.client_presence[client_jid] = Presence(nickname, client_jid, pubickey)
+    def update_presence(self, server_name:str, client_jid: str, nickname: str, pubickey: str):
+        target_server_presences = self.presences.get(server_name, dict())
+        target_server_presences.update({client_jid: Presence(nickname, client_jid, pubickey)})
+        self.presences[server_name] = target_server_presences
 
-    def remove_client_presence(self, client_jid: str):
-        self.client_presence.pop(client_jid)
+    def remove_presence(self, server_name:str, client_jid: str):
+        target_server_presence = self.presences.get(server_name, dict())
+        target_server_presence.pop(client_jid, None)
+        self.presences[server_name] = target_server_presence
 
-    def get_client_presence(self) -> dict:
-        return self.client_presence
+    def get_presences(self) -> dict:
+        return self.presences
 
+    # handling all the request or response from known exchange servers
     async def exchange_handler(self, websocket: websockets.WebSocketServerProtocol):
+        remote_address = websocket.remote_address
+        matched_remote_servers = [server for server in self.remote_servers if server["host"] == remote_address[0]]
+        # disconnect if unknown server
+        if not matched_remote_servers:
+            print('Unknown server, disconnecting...')
+            await websocket.close()
+            return
+        remote_server = matched_remote_servers[0]
         async for message in websocket:
             try:
                 exchange = parse_json(str(message))
@@ -87,8 +103,11 @@ class ExchangeServer:
                     await websocket.send(check_json(True))
                 elif exchange_type == "attendence":
                     await websocket.send(
-                        presence_json(list(self.client_presence.values()))
+                        presence_json(list(self.presences.get('LOCAL', {}).values()))
                     )
+                elif exchange_type == "presence":
+                    for presence in exchange.get("presence", []):
+                        self.update_presence(remote_server["name"], presence["jid"], presence["nickname"], presence["pubickey"])
             except json.JSONDecodeError:
                 logging.warn("incorrect json format")
 
@@ -99,6 +118,7 @@ class ExchangeServer:
                 config = yaml.safe_load(f)
             except yaml.YAMLError:
                 logging.error("unable to read config yaml file")
+        self.remote_servers = config.get("remote_servers", [])
         exchange_server_config = config.get("exchange_server", {})
         host = exchange_server_config.get("host", "localhost")
         port = exchange_server_config.get("port", 5555)
