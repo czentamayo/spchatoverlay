@@ -20,6 +20,19 @@ def message_json(sender: str, recipient: str, info: str) -> str:
     return json.dumps({"tag": "message", "from": sender, "to": recipient, "info": info})
 
 
+# Json to send file
+def file_json(sender: str, recipient: str, filename: str, encoded_file: str) -> str:
+    return json.dumps(
+        {
+            "tag": "file",
+            "from": sender,
+            "to": recipient,
+            "filename": filename,
+            "info": encoded_file,
+        }
+    )
+
+
 # Json to check if server is online
 # if is_response is True, it will generate response for check request from other server
 def check_json(is_response=False) -> str:
@@ -69,25 +82,27 @@ class ExchangeServer:
                 exchange_type = exchange.get("tag", None)
                 if exchange_type == "message":
                     pass
+                elif exchange_type == "file":
+                    pass
                 elif exchange_type == "check":
                     await websocket.send(check_json(True))
                 elif exchange_type == "attendence":
-                    await websocket.send(presence_json(list(self.client_presence.values())))
+                    await websocket.send(
+                        presence_json(list(self.client_presence.values()))
+                    )
             except json.JSONDecodeError:
-                logging.warn('incorrect json format')
-
-
+                logging.warn("incorrect json format")
 
     async def start_server(self):
         config = {}
-        with open('server_config.yaml', 'r') as f:
+        with open("server_config.yaml", "r") as f:
             try:
                 config = yaml.safe_load(f)
             except yaml.YAMLError:
-                logging.error('unable to read config yaml file')
-        exchange_server_config = config.get('exchange_server', {})
-        host = exchange_server_config.get('host', 'localhost')
-        port = exchange_server_config.get('port', 5555)
+                logging.error("unable to read config yaml file")
+        exchange_server_config = config.get("exchange_server", {})
+        host = exchange_server_config.get("host", "localhost")
+        port = exchange_server_config.get("port", 5555)
         async with serve(self.exchange_handler, host, port):
             await asyncio.Future()
 
