@@ -92,7 +92,7 @@ class ExchangeServer:
             except json.JSONDecodeError:
                 logging.warn("incorrect json format")
 
-    async def start_server(self):
+    def start_server(self) -> websockets.serve:
         config = {}
         with open("server_config.yaml", "r") as f:
             try:
@@ -102,8 +102,7 @@ class ExchangeServer:
         exchange_server_config = config.get("exchange_server", {})
         host = exchange_server_config.get("host", "localhost")
         port = exchange_server_config.get("port", 5555)
-        async with websockets.serve(self.exchange_handler, host, port):
-            await asyncio.Future()
+        return websockets.serve(self.exchange_handler, host, port)
 
     def stop_server(self):
         pass

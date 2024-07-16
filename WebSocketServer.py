@@ -1,6 +1,5 @@
 import asyncio
 import websockets
-import threading
 import aiofiles
 import hashlib
 
@@ -128,38 +127,19 @@ async def remove_client(websocket):
         print(f"{username} has left the chat.")
         await broadcast_message(f"{username} has left the chat.", websocket)
 
-async def start_server():
+def start_server():
     host = 'localhost'
     port = 12345
-    server = await websockets.serve(handle_client, host, port)
+    server = websockets.serve(handle_client, host, port)
     print(f'Server started at {host}:{port}')
+    return server
     
-    # await stop_event.wait()
-    # server.close()
-    # await server.wait_closed()
-    #
-    # for client in list(clients.values()):
-    #     await client.close()
 
-# def listen_for_stop_command(loop, stop_event):
-#     while True:
-#         command = input()
-#         if command.strip().upper() == 'STOP':
-#             asyncio.run_coroutine_threadsafe(set_stop_event(stop_event), loop)
-#             break
-#
-# async def set_stop_event(stop_event):
-#     stop_event.set()
-
-def main():
-    loop = asyncio.get_event_loop()
-    # stop_event = asyncio.Event()
-    # threading.Thread(target=listen_for_stop_command, args=(loop, stop_event)).start()
-    # loop.run_until_complete(start_server(stop_event))
-    loop.run_until_complete(start_server())
-    loop.run_forever()
-    loop.close()
+async def main():
+    await asyncio.gather(exchange_server.start_server(), start_server())
 
 if __name__ == '__main__':
-    # asyncio.run(exchange_server.start_server())
-    main()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    loop.run_forever()
+    loop.close()
