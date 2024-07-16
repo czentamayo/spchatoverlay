@@ -52,7 +52,7 @@ async def handle_client(websocket):
 
     clients[username] = websocket
     client_names[websocket] = username
-    exchange_server.update_presence('LOCAL', username, username, 'tmp')
+    await exchange_server.update_presence('LOCAL', username, username, 'tmp')
     welcome_message = f'{username} has joined the chat.\n'
     print(welcome_message)
     await broadcast_message(welcome_message, websocket)
@@ -131,7 +131,7 @@ async def remove_client(websocket):
     if username:
         del clients[username]
         del client_names[websocket]
-        exchange_server.remove_presence('LOCAL', username)
+        await exchange_server.remove_presence('LOCAL', username)
         print(f"{username} has left the chat.")
         await broadcast_message(f"{username} has left the chat.", websocket)
 
