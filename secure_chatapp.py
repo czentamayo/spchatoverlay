@@ -8,7 +8,11 @@ async def main():
     chat_server = ChatServer()
     exchange_server.set_chat_server(chat_server)
     chat_server.set_exchange_server(exchange_server)
-    await asyncio.gather(exchange_server.start_server(), chat_server.start_server())
+    await asyncio.gather(
+        exchange_server.start_server(), 
+        chat_server.start_server(), 
+        *exchange_server.connect_remote_servers()
+    )
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

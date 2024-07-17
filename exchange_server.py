@@ -4,6 +4,7 @@ import logging
 from typing import List
 import websockets
 import yaml
+import asyncio
 
 
 @dataclass
@@ -86,13 +87,12 @@ class ExchangeServer:
 
     def set_chat_server(self, chat_server):
         self.chat_server = chat_server
-        print(self.chat_server)
 
     # broadcasting presence to all remote servers if connected
     async def broadcast_presence(self):
         for remote_server in self.remote_servers.values():
-            if remote_server.get("websocket", None):
-                await remote_server["websocket"].send(
+            if remote_server.get("request_websocket", None):
+                await remote_server["request_websocket"].send(
                     presence_json(list(self.presences.get("LOCAL", {}).values()))
                 )
 
@@ -126,7 +126,7 @@ class ExchangeServer:
         return self.presences
 
     # handling all the request or response from known exchange servers
-    async def exchange_handler(self, websocket: websockets.WebSocketServerProtocol):
+    async def exchange_handler(self, websocket):
         remote_address = websocket.remote_address
         matched_remote_servers = [
             server
@@ -139,11 +139,13 @@ class ExchangeServer:
             await websocket.close()
             return
         remote_server = matched_remote_servers[0]
+        print(f"accepted connection from {remote_server}")
         # assoicate the websocket with remote server
         remote_server["websocket"] = websocket
         self.remote_servers[remote_server["name"]] = remote_server
         async for message in websocket:
             try:
+                print(message)
                 exchange = parse_json(str(message))
                 exchange_type = exchange.get("tag", None)
                 if exchange_type == "message":
@@ -181,9 +183,11 @@ class ExchangeServer:
                             presence["nickname"],
                             presence["pubickey"],
                         )
+                    print(f"updated presence: {self.presences}")
             except json.JSONDecodeError:
-                logging.warn("incorrect json format")
+                print("incorrect json format")
 
+                
     def start_server(self) -> websockets.serve:
         config = {}
         with open("server_config.yaml", "r") as f:
@@ -201,5 +205,29 @@ class ExchangeServer:
         port = exchange_server_config.get("port", 5555)
         return websockets.serve(self.exchange_handler, host, port)
 
-    def stop_server(self):
-        pass
+    async def connect_websocket(self, remote_server):
+        while True:
+            request_websocket = remote_server.get("request_websocket", None)
+            request_ws_url = f"ws://{remote_server['host']}:{remote_server['port']}"
+            if not request_websocket or request_websocket.closed:
+                try:
+                    async with websockets.connect(request_ws_url) as request_websocket:
+                        self.remote_servers[remote_server["name"]]["request_websocket"] = request_websocket
+                        print(f"Connection to {request_ws_url} successfully")
+                        await self.exchange_handler(request_websocket)
+                except websockets.WebSocketException as e:
+                    print(f"Connection to {request_ws_url} failed: {e}")
+                except ConnectionRefusedError as e:
+                    print(f"Connection to {request_ws_url} failed: {e}")
+                finally:
+                    await asyncio.sleep(10)
+            else:
+                await asyncio.sleep(10)
+
+
+    def connect_remote_servers(self):
+        tasks = []
+        for remote_server in self.remote_servers.values():
+            tasks.append(self.connect_websocket(remote_server))
+        return tasks
+

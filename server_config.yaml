@@ -6,17 +6,19 @@ exchange_server:
   host: localhost
   port: 5555
 remote_servers:
-  - name: s1
-    host: 127.0.0.1
-    port: 5555
   - name: s2
-    host: localhost
-    port: 5555
-  - name: s3
-    host: localhost
-    port: 5555
-  - name: s5
-    host: localhost
-    port: 5555
+    host: 127.0.0.1
+    port: 5552
   
 
+# server_name: s2
+# chat_server:
+#   host: localhost
+#   port: 12342
+# exchange_server:
+#   host: localhost
+#   port: 5552
+# remote_servers:
+#   - name: s4
+#     host: 127.0.0.1
+#     port: 5555
