@@ -107,6 +107,8 @@ class ExchangeServer:
     async def update_presence(
         self, server_name: str, client_jid: str, nickname: str, pubickey: str
     ):
+        if server_name == "LOCAL":
+            client_jid = f"{client_jid}@{self.server_name}"
         target_server_presences = self.presences.get(server_name, dict())
         target_server_presences.update(
             {client_jid: Presence(nickname, client_jid, pubickey)}
@@ -205,6 +207,7 @@ class ExchangeServer:
         port = exchange_server_config.get("port", 5555)
         return websockets.serve(self.exchange_handler, host, port)
 
+
     async def connect_websocket(self, remote_server):
         while True:
             request_websocket = remote_server.get("request_websocket", None)
@@ -213,7 +216,8 @@ class ExchangeServer:
                 try:
                     async with websockets.connect(request_ws_url) as request_websocket:
                         self.remote_servers[remote_server["name"]]["request_websocket"] = request_websocket
-                        print(f"Connection to {request_ws_url} successfully")
+                        print(f"Connection to {request_ws_url} successfully, sending attendence")
+                        await request_websocket.send(attendence_json())
                         await self.exchange_handler(request_websocket)
                 except websockets.WebSocketException as e:
                     print(f"Connection to {request_ws_url} failed: {e}")
