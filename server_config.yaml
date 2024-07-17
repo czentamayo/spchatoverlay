@@ -1,7 +1,10 @@
+server_name: s4
+chat_server:
+  host: localhost
+  port: 12345
 exchange_server:
   host: localhost
   port: 5555
-
 remote_servers:
   - name: s1
     host: 127.0.0.1
@@ -10,9 +13,6 @@ remote_servers:
     host: localhost
     port: 5555
   - name: s3
-    host: localhost
-    port: 5555
-  - name: s4
     host: localhost
     port: 5555
   - name: s5

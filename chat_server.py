@@ -1,7 +1,8 @@
 import websockets
 import aiofiles
 import hashlib
-
+import yaml
+import logging
 
 
 class ChatServer:
@@ -13,21 +14,18 @@ class ChatServer:
     def set_exchange_server(self, exchange_server):
         self.exchange_server = exchange_server
 
-
     async def load_accounts(self, filename="theaccounts.txt"):
         accounts = {}
-        async with aiofiles.open(filename, 'r') as file:
+        async with aiofiles.open(filename, "r") as file:
             async for line in file:
-                username, password = line.strip().split('::')
+                username, password = line.strip().split("::")
                 accounts[username] = password
         return accounts
-
 
     async def hash_password(self, password):
         h = hashlib.sha256()
         h.update(password.encode())
         return h.hexdigest()
-
 
     async def authenticate(self, websocket):
         try:
@@ -47,7 +45,6 @@ class ChatServer:
             print("Client disconnected during authentication.")
             return None
 
-
     async def handle_client(self, websocket):
         username = await self.authenticate(websocket)
         if not username:
@@ -56,24 +53,38 @@ class ChatServer:
 
         self.clients[username] = websocket
         self.client_names[websocket] = username
-        await self.exchange_server.update_presence('LOCAL', username, username, 'tmp')
-        welcome_message = f'{username} has joined the chat.\n'
+        await self.exchange_server.update_presence("LOCAL", username, username, "tmp")
+        welcome_message = f"{username} has joined the chat.\n"
         print(welcome_message)
         await self.broadcast_message(welcome_message, websocket)
-        
+
         try:
             while True:
                 message = await websocket.recv()
                 if message:
-                    print(f'Received from {username}: {message}')
+                    print(f"Received from {username}: {message}")
                     if message.startswith("@"):
-                        target_username, msg = message.split(" ", 1)
-                        target_username = target_username[1:]
-                        await self.send_message_to_client(msg, username, target_username)
+                        message_array = message.split(" ", 1)
+                        if len(message_array) < 2:
+                            continue
+                        target, msg = message.split(" ", 1)
+                        target_array = target.split("@")
+                        if len(target_array) < 3 or target_array[2] == self.server_name:
+                            # local message, e.g. @c1, @c1@s4
+                            await self.send_message_to_client(
+                                msg, username, target_array[1]
+                            )
+                        else:
+                            # remote message, e.g. @c1@s1
+                            await self.exchange_server.send_message_to_server(
+                                f'{username}@{self.server_name}', target_array[2], target_array[1], msg
+                            )
                     elif message.startswith("FILE"):
                         await self.handle_file_transfer(message, websocket)
                     else:
-                        await self.broadcast_message(f"{username}: {message}", websocket)
+                        await self.broadcast_message(
+                            f"{username}: {message}", websocket
+                        )
                 else:
                     await websocket.close()
                     await self.remove_client(websocket)
@@ -81,9 +92,8 @@ class ChatServer:
         except websockets.ConnectionClosed:
             await self.remove_client(websocket)
         except Exception as e:
-            print(f'Error: {e}')
+            print(f"Error: {e}")
             await self.remove_client(websocket)
-
 
     async def broadcast_message(self, message, sender_socket):
         print(self.exchange_server.get_presences())
@@ -95,20 +105,20 @@ class ChatServer:
                     await client.close()
                     await self.remove_client(client)
 
-
     async def send_message_to_client(self, message, sender_username, target_username):
         print(f"sending to {target_username}")
         if target_username in self.clients:
             target_socket = self.clients[target_username]
             try:
-                await target_socket.send(f"{sender_username} to {target_username}: {message}")
+                await target_socket.send(
+                    f"{sender_username} to {target_username}: {message}"
+                )
             except:
                 await target_socket.close()
                 await self.remove_client(target_socket)
         else:
             sender_socket = self.clients[sender_username]
             await sender_socket.send(f"User {target_username} not found.")
-
 
     async def handle_file_transfer(self, message, websocket):
         parts = message.split(" ", 2)
@@ -129,21 +139,26 @@ class ChatServer:
         else:
             await websocket.send(f"User {target_username} not found.")
 
-
     async def remove_client(self, websocket):
         username = self.client_names.get(websocket)
         if username:
             del self.clients[username]
             del self.client_names[websocket]
-            await self.exchange_server.remove_presence('LOCAL', username)
+            await self.exchange_server.remove_presence("LOCAL", username)
             print(f"{username} has left the chat.")
             await self.broadcast_message(f"{username} has left the chat.", websocket)
 
-
     def start_server(self):
-        host = 'localhost'
-        port = 12345
+        config = {}
+        with open("server_config.yaml", "r") as f:
+            try:
+                config = yaml.safe_load(f)
+            except yaml.YAMLError:
+                logging.error("unable to read config yaml file")
+        self.server_name = config.get("server_name", "s4")
+        chat_server_config = config.get("chat_server", {})
+        host = chat_server_config.get("host", "localhost")
+        port = chat_server_config.get("port", 12345)
         server = websockets.serve(self.handle_client, host, port)
-        print(f'Server started at {host}:{port}')
+        print(f"Server started at {host}:{port}")
         return server
-    

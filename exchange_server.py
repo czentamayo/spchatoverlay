@@ -15,7 +15,14 @@ class Presence:
 
 # Json wrapper for messsage
 def message_json(sender: str, recipient: str, info: str) -> str:
-    return json.dumps({"tag": "message", "from": sender, "to": recipient, "info": info})
+    return json.dumps(
+        {
+            "tag": "message",
+            "from": sender,
+            "to": recipient,
+            "info": info,
+        }
+    )
 
 
 # Json to send file
@@ -75,11 +82,11 @@ class ExchangeServer:
         # presences is in format {server_name: {client_jid: Presence}}
         self.presences = {}
         self.remote_servers = {}
+        self.server_name = "s4"
 
     def set_chat_server(self, chat_server):
         self.chat_server = chat_server
         print(self.chat_server)
-
 
     # broadcasting presence to all remote servers if connected
     async def broadcast_presence(self):
@@ -87,6 +94,14 @@ class ExchangeServer:
             if remote_server.get("websocket", None):
                 await remote_server["websocket"].send(
                     presence_json(list(self.presences.get("LOCAL", {}).values()))
+                )
+
+    async def send_message_to_server(self, sender:str, target_server:str, target_client:str, msg:str):
+        remote_server = self.remote_servers.get(target_server, None)
+        if remote_server:
+            if remote_server.get("websocket", None):
+                await remote_server["websocket"].send(
+                    message_json(sender, f'{target_client}@{target_server}', msg)
                 )
 
     async def update_presence(
@@ -100,14 +115,12 @@ class ExchangeServer:
         if server_name == "LOCAL":
             await self.broadcast_presence()
 
-
     async def remove_presence(self, server_name: str, client_jid: str):
         target_server_presence = self.presences.get(server_name, dict())
         target_server_presence.pop(client_jid, None)
         self.presences[server_name] = target_server_presence
         if server_name == "LOCAL":
             await self.broadcast_presence()
-
 
     def get_presences(self) -> dict:
         return self.presences
@@ -134,7 +147,24 @@ class ExchangeServer:
                 exchange = parse_json(str(message))
                 exchange_type = exchange.get("tag", None)
                 if exchange_type == "message":
-                    pass
+                    exchange_from = exchange.get("from", None)
+                    exchange_to = exchange.get("to", None)
+                    exchange_info = exchange.get("info", None)
+
+                    # message validation
+                    if not exchange_from or not exchange_to or not exchange_info:
+                        continue
+                    to_array = exchange_to.split("@")
+                    if len(to_array) < 2:
+                        continue
+                    to_client = to_array[0]
+                    to_server = to_array[1]
+                    if to_server != self.server_name:
+                        continue
+                    if self.presences['LOCAL'].get(to_client, None) is not None:
+                        await self.chat_server.send_message_to_client(
+                            exchange_info, exchange_from, to_client
+                    )
                 elif exchange_type == "file":
                     pass
                 elif exchange_type == "check":
@@ -165,6 +195,7 @@ class ExchangeServer:
         self.remote_servers = {
             remote_server["name"]: remote_server for remote_server in remote_server_list
         }
+        self.server_name = config.get("server_name", "s4")
         exchange_server_config = config.get("exchange_server", {})
         host = exchange_server_config.get("host", "localhost")
         port = exchange_server_config.get("port", 5555)
