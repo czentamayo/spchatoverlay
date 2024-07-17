@@ -3,7 +3,6 @@ from dataclasses import dataclass
 import logging
 from typing import List
 import websockets
-import asyncio
 import yaml
 
 
@@ -76,6 +75,10 @@ class ExchangeServer:
         # presences is in format {server_name: {client_jid: Presence}}
         self.presences = {}
         self.remote_servers = {}
+
+    def set_chat_server(self, chat_server):
+        self.chat_server = chat_server
+        print(self.chat_server)
 
 
     # broadcasting presence to all remote servers if connected
