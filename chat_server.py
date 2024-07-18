@@ -130,7 +130,7 @@ class ChatServer:
             target_socket = self.clients[target_username]
             try:
                 await target_socket.send(
-                    f"{sender_username} to {target_username}: {message}"
+                    f"@{sender_username} to {target_username}: {message}"
                 )
             except:
                 await target_socket.close()
