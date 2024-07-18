@@ -10,6 +10,7 @@ class ChatServer:
     def __init__(self):
         self.clients = {}
         self.client_names = {}
+        self.server_name = 's4'
 
     def set_exchange_server(self, exchange_server):
         self.exchange_server = exchange_server
@@ -101,6 +102,7 @@ class ChatServer:
             print(f"Error: {e}")
             await self.remove_client(websocket)
 
+
     async def broadcast_message(self, message, sender_socket):
         print(self.exchange_server.get_presences())
         for client in self.clients.values():
@@ -161,7 +163,7 @@ class ChatServer:
         if username:
             del self.clients[username]
             del self.client_names[websocket]
-            await self.exchange_server.remove_presence("LOCAL", username)
+            await self.exchange_server.remove_presence("LOCAL", f'{username}@{self.server_name}')
             print(f"{username} has left the chat.")
             await self.broadcast_message(f"{username} has left the chat.", websocket)
 

@@ -127,6 +127,8 @@ class ExchangeServer:
         self.presences[server_name] = target_server_presence
         if server_name == "LOCAL":
             await self.broadcast_presence()
+            flatten_presence = [value for sublist in self.presences.values() for value in sublist.values()]
+            await self.chat_server.broadcast_presence(presence_json(flatten_presence))
 
     def get_presences(self) -> dict:
         return self.presences
