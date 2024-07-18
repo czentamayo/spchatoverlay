@@ -64,8 +64,11 @@ async def receive_messages(websocket):
                         current_presence = presence_json["presence"]
                     else:
                         sender, encrypted_message = message.split(": ", 1)
-                        real_msg = base64_rsa_decrypt(encrypted_message)
-                        print(sender + ": " + real_msg)
+                        try:
+                            real_msg = base64_rsa_decrypt(encrypted_message)
+                            print(sender + ": " + real_msg)
+                        except Exception as e:
+                            print(f'decryption error: {e}')
                 else:
                     break
             except websockets.ConnectionClosed:
@@ -128,11 +131,19 @@ async def start_client():
                     if message.startswith("@"):
                         target_username_str, info = message.split(" ", 1)
                         target_username = target_username_str[1:]
-                        target_presence_array = [presence for presence in current_presence if presence["jid"] == target_username]
+                        target_presence_array = [
+                            presence
+                            for presence in current_presence
+                            if presence["jid"] == target_username
+                        ]
                         if len(target_presence_array) < 1:
                             continue
                         target_presence = target_presence_array[0]
-                        message = target_username_str + " " + base64_rsa_encrypt(info, target_presence["publickey"])
+                        message = (
+                            target_username_str
+                            + " "
+                            + base64_rsa_encrypt(info, target_presence["publickey"])
+                        )
                     await websocket.send(message)
     except websockets.ConnectionClosed:
         print("Connection closed by server.")

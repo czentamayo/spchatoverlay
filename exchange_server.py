@@ -95,12 +95,21 @@ class ExchangeServer:
                 await remote_server["request_websocket"].send(
                     presence_json(list(self.presences.get("LOCAL", {}).values()))
                 )
+            elif remote_server.get("websocket", None):
+                await remote_server["websocket"].send(
+                    presence_json(list(self.presences.get("LOCAL", {}).values()))
+                )
 
     async def send_message_to_server(self, sender:str, target_server:str, target_client:str, msg:str):
         remote_server = self.remote_servers.get(target_server, None)
+        print(remote_server)
         if remote_server:
             if remote_server.get("websocket", None):
                 await remote_server["websocket"].send(
+                    message_json(sender, f'{target_client}@{target_server}', msg)
+                )
+            elif remote_server.get("request_websocket", None):
+                await remote_server["request_websocket"].send(
                     message_json(sender, f'{target_client}@{target_server}', msg)
                 )
 
@@ -162,7 +171,7 @@ class ExchangeServer:
         self.remote_servers[remote_server["name"]] = remote_server
         async for message in websocket:
             try:
-                print(message)
+                print(f"Received from exchange server: {message}" )
                 exchange = parse_json(str(message))
                 exchange_type = exchange.get("tag", None)
                 if exchange_type == "message":
@@ -180,7 +189,8 @@ class ExchangeServer:
                     to_server = to_array[1]
                     if to_server != self.server_name:
                         continue
-                    if self.presences['LOCAL'].get(to_client, None) is not None:
+                    if self.presences['LOCAL'].get(exchange_to, None):
+                        print("forwarding to client")
                         await self.chat_server.send_message_to_client(
                             exchange_info, exchange_from, to_client
                     )
