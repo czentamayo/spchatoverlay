@@ -1,27 +1,24 @@
-server_name: s1
-chat_server:
-  host: localhost
-  port: 12345
-exchange_server:
-  host: localhost
-  port: 5555
+# server_name: s1
+# chat_server:
+#   host: localhost
+#   port: 12345
+# exchange_server:
+#   host: localhost
+#   port: 5555
 # remote_servers:
 #   - name: s2
 #     host: 127.0.0.1
 #     port: 5552
-  # - name: s2
-  #   host: b771-2403-4800-9455-d000-ac98-6468-8785-8268.ngrok-free.app
-  #   port: 443
   
 
-# server_name: s2
-# chat_server:
-#   host: localhost
-#   port: 12342
-# exchange_server:
-#   host: localhost
-#   port: 5552
-# remote_servers:
-#   - name: s4
-#     host: 127.0.0.1
-#     port: 5555
+server_name: s2
+chat_server:
+  host: localhost
+  port: 12342
+exchange_server:
+  host: localhost
+  port: 5552
+remote_servers:
+  - name: s4
+    host: 127.0.0.1
+    port: 5555

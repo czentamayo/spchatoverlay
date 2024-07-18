@@ -1,3 +1,4 @@
+import traceback
 import websockets
 import aiofiles
 import hashlib
@@ -49,7 +50,6 @@ class ChatServer:
 
     async def handle_client(self, websocket):
         username, user_pub_key = await self.authenticate(websocket)
-        print(user_pub_key)
         if not username:
             await websocket.close()
             return
@@ -104,7 +104,6 @@ class ChatServer:
 
 
     async def broadcast_message(self, message, sender_socket):
-        print(self.exchange_server.get_presences())
         for client in self.clients.values():
             if client != sender_socket:
                 try:
@@ -121,7 +120,6 @@ class ChatServer:
             except:
                 await client.close()
                 await self.remove_client(client)
-
 
 
     async def send_message_to_client(self, message, sender_username, target_username):

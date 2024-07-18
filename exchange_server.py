@@ -144,75 +144,84 @@ class ExchangeServer:
 
     # handling all the request or response from known exchange servers
     async def exchange_handler(self, websocket, server_name=None):
-        remote_address = websocket.remote_address
-        if isinstance(websocket, websockets.WebSocketServerProtocol):
-            matched_remote_servers = [
-                server
-                for server in self.remote_servers.values()
-                if server["host"] == remote_address[0]
-            ]
-            # disconnect if unknown server
-            if not matched_remote_servers:
-                print("Unknown server, disconnecting...")
-                await websocket.close()
-                return
-            remote_server = matched_remote_servers[0]
-            # assoicate the websocket with remote server
-            remote_server["websocket"] = websocket
-            print(f"accepted connection from {remote_server}")
-        else:
-            matched_remote_servers = [
-                server
-                for server in self.remote_servers.values()
-                if server["name"] == server_name
-            ]
-            remote_server = matched_remote_servers[0]
-            remote_server["request_websocket"] = websocket
-        self.remote_servers[remote_server["name"]] = remote_server
-        async for message in websocket:
-            try:
-                print(f"Received from exchange server: {message}" )
-                exchange = parse_json(str(message))
-                exchange_type = exchange.get("tag", None)
-                if exchange_type == "message":
-                    exchange_from = exchange.get("from", None)
-                    exchange_to = exchange.get("to", None)
-                    exchange_info = exchange.get("info", None)
+        try:
+            remote_address = websocket.remote_address
+            if isinstance(websocket, websockets.WebSocketServerProtocol):
+                matched_remote_servers = [
+                    server
+                    for server in self.remote_servers.values()
+                    if server["host"] == remote_address[0]
+                ]
+                # disconnect if unknown server
+                if not matched_remote_servers:
+                    print("Unknown server, disconnecting...")
+                    await websocket.close()
+                    return
+                remote_server = matched_remote_servers[0]
+                # assoicate the websocket with remote server
+                remote_server["websocket"] = websocket
+                print(f"accepted connection from {remote_server}")
+            else:
+                matched_remote_servers = [
+                    server
+                    for server in self.remote_servers.values()
+                    if server["name"] == server_name
+                ]
+                remote_server = matched_remote_servers[0]
+                remote_server["request_websocket"] = websocket
+            self.remote_servers[remote_server["name"]] = remote_server
+            async for message in websocket:
+                try:
+                    print(f"Received from exchange server: {message}" )
+                    exchange = parse_json(str(message))
+                    exchange_type = exchange.get("tag", None)
+                    if exchange_type == "message":
+                        exchange_from = exchange.get("from", None)
+                        exchange_to = exchange.get("to", None)
+                        exchange_info = exchange.get("info", None)
 
-                    # message validation
-                    if not exchange_from or not exchange_to or not exchange_info:
-                        continue
-                    to_array = exchange_to.split("@")
-                    if len(to_array) < 2:
-                        continue
-                    to_client = to_array[0]
-                    to_server = to_array[1]
-                    if to_server != self.server_name:
-                        continue
-                    if self.presences['LOCAL'].get(exchange_to, None):
-                        print("forwarding to client")
-                        await self.chat_server.send_message_to_client(
-                            exchange_info, exchange_from, to_client
-                    )
-                elif exchange_type == "file":
-                    pass
-                elif exchange_type == "check":
-                    await websocket.send(check_json(True))
-                elif exchange_type == "attendance":
-                    await websocket.send(
-                        presence_json(list(self.presences.get("LOCAL", {}).values()))
-                    )
-                elif exchange_type == "presence":
-                    for presence in exchange.get("presence", []):
-                        await self.update_presence(
-                            remote_server["name"],
-                            presence["jid"],
-                            presence["nickname"],
-                            presence["publickey"],
+                        # message validation
+                        if not exchange_from or not exchange_to or not exchange_info:
+                            continue
+                        to_array = exchange_to.split("@")
+                        if len(to_array) < 2:
+                            continue
+                        to_client = to_array[0]
+                        to_server = to_array[1]
+                        if to_server != self.server_name:
+                            continue
+                        if self.presences['LOCAL'].get(exchange_to, None):
+                            print("forwarding to client")
+                            await self.chat_server.send_message_to_client(
+                                exchange_info, exchange_from, to_client
                         )
-                    print(f"updated presence: {self.presences}")
-            except json.JSONDecodeError:
-                print("incorrect json format")
+                    elif exchange_type == "file":
+                        pass
+                    elif exchange_type == "check":
+                        await websocket.send(check_json(True))
+                    elif exchange_type == "attendance":
+                        await websocket.send(
+                            presence_json(list(self.presences.get("LOCAL", {}).values()))
+                        )
+                    elif exchange_type == "presence":
+                        for presence in exchange.get("presence", []):
+                            await self.update_presence(
+                                remote_server["name"],
+                                presence["jid"],
+                                presence["nickname"],
+                                presence["publickey"],
+                            )
+                        print(f"updated presence: {self.presences}")
+                except json.JSONDecodeError:
+                    print("incorrect json format")
+        except websockets.exceptions.ConnectionClosedOK:
+            remote_address = websocket.remote_address
+            print(f"Server {remote_address} closed the connection.")
+        except websockets.exceptions.ConnectionClosedError as e:
+            remote_address = websocket.remote_address
+            print(f"Connection {remote_address} closed with error: {e.code}, {e.reason}")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}")
 
                 
     def start_server(self) -> websockets.serve:
