@@ -5,14 +5,13 @@ chat_server:
 exchange_server:
   host: localhost
   port: 5555
-remote_servers:
+# remote_servers:
+#   - name: s2
+#     host: 127.0.0.1
+#     port: 5552
   # - name: s2
-  #   host: 127.0.0.1
-  #   port: 5552
-  - name: s2
-    host: b771-2403-4800-9455-d000-ac98-6468-8785-8268.ngrok-free.app
-    # host: 54.153.239.159
-    port: 443
+  #   host: b771-2403-4800-9455-d000-ac98-6468-8785-8268.ngrok-free.app
+  #   port: 443
   
 
 # server_name: s2

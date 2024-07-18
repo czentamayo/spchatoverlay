@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives import serialization
 import base64
 import json
+import traceback
 
 # Generate RSA key pair
 local_private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -58,17 +59,23 @@ async def receive_messages(websocket):
                         file.write(base64.b64decode(file_data))
                     print(f"Received file {file_name}")
                 elif message:
+                    # special handling for updating presence, which contains public key
                     if "tag" in message and "presence" in message:
                         presence_json = parse_json(message)
                         global current_presence
                         current_presence = presence_json["presence"]
+                        print(f"active users: {[f'{presence['nickname']}({presence['jid']})' for presence in current_presence]}")
                     else:
-                        sender, encrypted_message = message.split(": ", 1)
-                        try:
-                            real_msg = base64_rsa_decrypt(encrypted_message)
-                            print(sender + ": " + real_msg)
-                        except Exception as e:
-                            print(f'decryption error: {e}')
+                        msg_split = message.split(": ", 1)
+                        if len(msg_split) < 2:
+                            print(message)
+                        else:
+                            sender, encrypted_message = message.split(": ", 1)
+                            try:
+                                real_msg = base64_rsa_decrypt(encrypted_message)
+                                print(sender + ": " + real_msg)
+                            except Exception as e:
+                                print(f'decryption error: {e}')
                 else:
                     break
             except websockets.ConnectionClosed:
@@ -76,6 +83,7 @@ async def receive_messages(websocket):
                 break
             except Exception as e:
                 print(f"Error receiving message: {e}")
+                traceback.print_exc()
                 break
     finally:
         await websocket.close()
@@ -96,6 +104,7 @@ async def start_client():
                     message = input()
                     await websocket.send(message)
                 elif response == "Authentication successful":
+                    # send public key pem after authentication
                     await websocket.send(local_public_key_pem)
                     break
                 elif response == "Authentication failed":
