@@ -114,8 +114,12 @@ class ExchangeServer:
             {client_jid: Presence(nickname, client_jid, pubickey)}
         )
         self.presences[server_name] = target_server_presences
+        flatten_presence = [value for sublist in self.presences.values() for value in sublist.values()]
         if server_name == "LOCAL":
             await self.broadcast_presence()
+            await self.chat_server.broadcast_presence(presence_json(flatten_presence))
+        else:
+            await self.chat_server.broadcast_presence(presence_json(flatten_presence))
 
     async def remove_presence(self, server_name: str, client_jid: str):
         target_server_presence = self.presences.get(server_name, dict())

@@ -37,23 +37,27 @@ class ChatServer:
             accounts = await self.load_accounts()
             if username in accounts and accounts[username] == password:
                 await websocket.send("Authentication successful")
-                return username
+                user_pub_key = await websocket.recv()
+                return username, user_pub_key
             else:
                 await websocket.send("Authentication failed")
-                return None
+                return None, None
         except websockets.exceptions.ConnectionClosed:
             print("Client disconnected during authentication.")
-            return None
+            return None, None
 
     async def handle_client(self, websocket):
-        username = await self.authenticate(websocket)
+        username, user_pub_key = await self.authenticate(websocket)
+        print(user_pub_key)
         if not username:
             await websocket.close()
             return
 
         self.clients[username] = websocket
         self.client_names[websocket] = username
-        await self.exchange_server.update_presence("LOCAL", username, username, "tmp")
+        await self.exchange_server.update_presence(
+            "LOCAL", username, username, user_pub_key
+        )
         welcome_message = f"{username} has joined the chat.\n"
         print(welcome_message)
         await self.broadcast_message(welcome_message, websocket)
@@ -75,9 +79,11 @@ class ChatServer:
                                 msg, username, target_array[1]
                             )
                         else:
-                            # remote message, e.g. @c1@s1
                             await self.exchange_server.send_message_to_server(
-                                f'{username}@{self.server_name}', target_array[2], target_array[1], msg
+                                f"{username}@{self.server_name}",
+                                target_array[2],
+                                target_array[1],
+                                msg
                             )
                     elif message.startswith("FILE"):
                         await self.handle_file_transfer(message, websocket)
@@ -104,6 +110,17 @@ class ChatServer:
                 except:
                     await client.close()
                     await self.remove_client(client)
+
+
+    async def broadcast_presence(self, presence_json):
+        for client in self.clients.values():
+            try:
+                await client.send(presence_json)
+            except:
+                await client.close()
+                await self.remove_client(client)
+
+
 
     async def send_message_to_client(self, message, sender_username, target_username):
         print(f"sending to {target_username}")
