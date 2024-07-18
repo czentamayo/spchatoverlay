@@ -72,11 +72,14 @@ async def receive_messages(websocket):
                             print(message)
                         else:
                             sender, encrypted_message = message.split(": ", 1)
-                            try:
-                                real_msg = base64_rsa_decrypt(encrypted_message)
-                                print(sender + ": " + real_msg)
-                            except Exception as e:
-                                print(f'decryption error: {e}')
+                            if sender.startswith("@"):
+                                try:
+                                    real_msg = base64_rsa_decrypt(encrypted_message)
+                                    print(sender[1:] + ": " + real_msg)
+                                except Exception as e:
+                                    print(f'decryption error: {e}')
+                            else:
+                                print(message)
                 else:
                     break
             except websockets.ConnectionClosed:
