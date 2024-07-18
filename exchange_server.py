@@ -236,7 +236,7 @@ class ExchangeServer:
     async def connect_websocket(self, remote_server):
         while True:
             request_websocket = remote_server.get("request_websocket", None)
-            request_ws_url = f"wss://{remote_server['host']}:{remote_server['port']}"
+            request_ws_url = f"ws://{remote_server['host']}:{remote_server['port']}"
             # request_ws_url = f"wss://{remote_server['host']}"
             if not request_websocket or request_websocket.closed:
                 try:
