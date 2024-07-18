@@ -64,7 +64,7 @@ async def receive_messages(websocket):
                         presence_json = parse_json(message)
                         global current_presence
                         current_presence = presence_json["presence"]
-                        print(f"active users: {[f'{presence['nickname']}({presence['jid']})' for presence in current_presence]}")
+                        # print(f"active users: {[f'{presence['nickname']}({presence['jid']})' for presence in current_presence]}")
                     else:
                         msg_split = message.split(": ", 1)
                         if len(msg_split) < 2:

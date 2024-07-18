@@ -91,13 +91,15 @@ class ExchangeServer:
     # broadcasting presence to all remote servers if connected
     async def broadcast_presence(self):
         for remote_server in self.remote_servers.values():
+            presence_json_str = presence_json(list(self.presences.get("LOCAL", {}).values()))
+            print(f"presennc_json: {presence_json_str}")
             if remote_server.get("request_websocket", None):
                 await remote_server["request_websocket"].send(
-                    presence_json(list(self.presences.get("LOCAL", {}).values()))
+                    presence_json_str
                 )
             elif remote_server.get("websocket", None):
                 await remote_server["websocket"].send(
-                    presence_json(list(self.presences.get("LOCAL", {}).values()))
+                    presence_json_str
                 )
 
     async def send_message_to_server(self, sender:str, target_server:str, target_client:str, msg:str):
@@ -105,10 +107,12 @@ class ExchangeServer:
         print(remote_server)
         if remote_server:
             if remote_server.get("websocket", None):
+                print('websocket message')
                 await remote_server["websocket"].send(
                     message_json(sender, f'{target_client}@{target_server}', msg)
                 )
             elif remote_server.get("request_websocket", None):
+                print('request websocket message')
                 await remote_server["request_websocket"].send(
                     message_json(sender, f'{target_client}@{target_server}', msg)
                 )
@@ -173,6 +177,7 @@ class ExchangeServer:
             try:
                 print(f"Received from exchange server: {message}" )
                 exchange = parse_json(str(message))
+                print("DEBUG:",type(exchange), exchange)
                 exchange_type = exchange.get("tag", None)
                 if exchange_type == "message":
                     exchange_from = exchange.get("from", None)
