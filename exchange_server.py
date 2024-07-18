@@ -11,7 +11,7 @@ import asyncio
 class Presence:
     nickname: str
     jid: str
-    pubickey: str
+    publickey: str
 
 
 # Json wrapper for messsage
@@ -55,7 +55,7 @@ def presence_json(presence_list: List[Presence]) -> str:
             {
                 "nickname": presence.nickname,
                 "jid": presence.jid,
-                "pubickey": presence.pubickey,
+                "publickey": presence.publickey,
             }
         )
         for presence in presence_list
@@ -64,8 +64,8 @@ def presence_json(presence_list: List[Presence]) -> str:
 
 
 # Json request for server presence list
-def attendence_json() -> str:
-    return json.dumps({"tag": "attendence"})
+def attendance_json() -> str:
+    return json.dumps({"tag": "attendance"})
 
 
 # Convert json string to dict
@@ -105,13 +105,13 @@ class ExchangeServer:
                 )
 
     async def update_presence(
-        self, server_name: str, client_jid: str, nickname: str, pubickey: str
+        self, server_name: str, client_jid: str, nickname: str, publickey: str
     ):
         if server_name == "LOCAL":
             client_jid = f"{client_jid}@{self.server_name}"
         target_server_presences = self.presences.get(server_name, dict())
         target_server_presences.update(
-            {client_jid: Presence(nickname, client_jid, pubickey)}
+            {client_jid: Presence(nickname, client_jid, publickey)}
         )
         self.presences[server_name] = target_server_presences
         flatten_presence = [value for sublist in self.presences.values() for value in sublist.values()]
@@ -134,22 +134,31 @@ class ExchangeServer:
         return self.presences
 
     # handling all the request or response from known exchange servers
-    async def exchange_handler(self, websocket):
+    async def exchange_handler(self, websocket, server_name=None):
         remote_address = websocket.remote_address
-        matched_remote_servers = [
-            server
-            for server in self.remote_servers.values()
-            if server["host"] == remote_address[0]
-        ]
-        # disconnect if unknown server
-        if not matched_remote_servers:
-            print("Unknown server, disconnecting...")
-            await websocket.close()
-            return
-        remote_server = matched_remote_servers[0]
-        print(f"accepted connection from {remote_server}")
-        # assoicate the websocket with remote server
-        remote_server["websocket"] = websocket
+        if isinstance(websocket, websockets.WebSocketServerProtocol):
+            matched_remote_servers = [
+                server
+                for server in self.remote_servers.values()
+                if server["host"] == remote_address[0]
+            ]
+            # disconnect if unknown server
+            if not matched_remote_servers:
+                print("Unknown server, disconnecting...")
+                await websocket.close()
+                return
+            remote_server = matched_remote_servers[0]
+            # assoicate the websocket with remote server
+            remote_server["websocket"] = websocket
+            print(f"accepted connection from {remote_server}")
+        else:
+            matched_remote_servers = [
+                server
+                for server in self.remote_servers.values()
+                if server["name"] == server_name
+            ]
+            remote_server = matched_remote_servers[0]
+            remote_server["request_websocket"] = websocket
         self.remote_servers[remote_server["name"]] = remote_server
         async for message in websocket:
             try:
@@ -179,7 +188,7 @@ class ExchangeServer:
                     pass
                 elif exchange_type == "check":
                     await websocket.send(check_json(True))
-                elif exchange_type == "attendence":
+                elif exchange_type == "attendance":
                     await websocket.send(
                         presence_json(list(self.presences.get("LOCAL", {}).values()))
                     )
@@ -189,7 +198,7 @@ class ExchangeServer:
                             remote_server["name"],
                             presence["jid"],
                             presence["nickname"],
-                            presence["pubickey"],
+                            presence["publickey"],
                         )
                     print(f"updated presence: {self.presences}")
             except json.JSONDecodeError:
@@ -217,14 +226,15 @@ class ExchangeServer:
     async def connect_websocket(self, remote_server):
         while True:
             request_websocket = remote_server.get("request_websocket", None)
-            request_ws_url = f"ws://{remote_server['host']}:{remote_server['port']}"
+            request_ws_url = f"wss://{remote_server['host']}:{remote_server['port']}"
+            # request_ws_url = f"wss://{remote_server['host']}"
             if not request_websocket or request_websocket.closed:
                 try:
                     async with websockets.connect(request_ws_url) as request_websocket:
                         self.remote_servers[remote_server["name"]]["request_websocket"] = request_websocket
-                        print(f"Connection to {request_ws_url} successfully, sending attendence")
-                        await request_websocket.send(attendence_json())
-                        await self.exchange_handler(request_websocket)
+                        print(f"Connection to {request_ws_url} successfully, sending attendance")
+                        await request_websocket.send(attendance_json())
+                        await self.exchange_handler(request_websocket, remote_server["name"])
                 except websockets.WebSocketException as e:
                     print(f"Connection to {request_ws_url} failed: {e}")
                 except ConnectionRefusedError as e:

@@ -132,7 +132,7 @@ async def start_client():
                         if len(target_presence_array) < 1:
                             continue
                         target_presence = target_presence_array[0]
-                        message = target_username_str + " " + base64_rsa_encrypt(info, target_presence["pubickey"])
+                        message = target_username_str + " " + base64_rsa_encrypt(info, target_presence["publickey"])
                     await websocket.send(message)
     except websockets.ConnectionClosed:
         print("Connection closed by server.")
