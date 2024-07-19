@@ -1,8 +1,14 @@
 import logging
 import logging.config
 import yaml
-
 import os
+import sys
+import json
+from dataclasses import dataclass
+from typing import List
+import websockets
+import asyncio
+
 
 log_directory = 'log'
 
@@ -21,13 +27,14 @@ logging.config.dictConfig(config)
 # Create logger
 logger = logging.getLogger(__name__)
 
-import json
-from dataclasses import dataclass
-from typing import List
-import websockets
-import yaml
-import asyncio
 
+def log_unhandled_exception(exc_type, exc_value, exc_traceback):
+    # Log the unhandled exception with traceback
+    logger.exception("An unhandled exception occurred:", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+# Set the custom exception handler
+sys.excepthook = log_unhandled_exception
 
 
 @dataclass
@@ -96,7 +103,7 @@ def parse_json(json_str: str) -> dict:
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:
-        logger.warning("JSON parsing error")
+        logger.warning(f"JSON parsing error: {json_str}")
         return {}
 
 
@@ -127,12 +134,12 @@ class ExchangeServer:
         remote_server = self.remote_servers.get(target_server, None)
         logger.debug(remote_server)
         if remote_server:
-            if remote_server.get("websocket", None):
-                await remote_server["websocket"].send(
+            if remote_server.get("request_websocket", None):
+                await remote_server["request_websocket"].send(
                     message_json(sender, f'{target_client}@{target_server}', msg)
                 )
-            elif remote_server.get("request_websocket", None):
-                await remote_server["request_websocket"].send(
+            elif remote_server.get("websocket", None):
+                await remote_server["websocket"].send(
                     message_json(sender, f'{target_client}@{target_server}', msg)
                 )
 
@@ -177,7 +184,7 @@ class ExchangeServer:
                 ]
                 # disconnect if unknown server
                 if not matched_remote_servers:
-                    logger.warn("Unknown server, disconnecting...")
+                    logger.warning(f"Unknown server: {remote_address}, disconnecting...")
                     await websocket.close()
                     return
                 remote_server = matched_remote_servers[0]
@@ -221,6 +228,7 @@ class ExchangeServer:
                     elif exchange_type == "file":
                         pass
                     elif exchange_type == "check":
+                        # logger.debug(f"sending checked to {websocket.remote_address}")
                         await websocket.send(check_json(True))
                     elif exchange_type == "attendance":
                         await websocket.send(
@@ -236,7 +244,7 @@ class ExchangeServer:
                             )
                         logger.debug(f"updated presence: {self.presences}")
                 except json.JSONDecodeError:
-                    logger.warn("incorrect json format")
+                    logger.warning("incorrect json format")
         except websockets.exceptions.ConnectionClosedOK:
             remote_address = websocket.remote_address
             logger.info(f"Server {remote_address} closed the connection.")
@@ -255,6 +263,8 @@ class ExchangeServer:
             except yaml.YAMLError:
                 logging.error("unable to read config yaml file")
         remote_server_list = config.get("remote_servers", [])
+        logger.debug(remote_server_list)
+        logger.debug(config)
         self.remote_servers = {
             remote_server["name"]: remote_server for remote_server in remote_server_list
         }
@@ -266,25 +276,30 @@ class ExchangeServer:
 
 
     async def connect_websocket(self, remote_server):
-        while True:
-            request_websocket = remote_server.get("request_websocket", None)
-            request_ws_url = f"ws://{remote_server['host']}:{remote_server['port']}"
-            # request_ws_url = f"wss://{remote_server['host']}"
-            if not request_websocket or request_websocket.closed:
-                try:
-                    async with websockets.connect(request_ws_url) as request_websocket:
-                        self.remote_servers[remote_server["name"]]["request_websocket"] = request_websocket
-                        logger.info(f"Connection to {request_ws_url} successfully, sending attendance")
-                        await request_websocket.send(attendance_json())
-                        await self.exchange_handler(request_websocket, remote_server["name"])
-                except websockets.WebSocketException as e:
-                    logger.warn(f"Connection to {request_ws_url} failed: {e}")
-                except ConnectionRefusedError as e:
-                    logger.warn(f"Connection to {request_ws_url} failed: {e}")
-                finally:
+        try:
+            while True:
+                request_websocket = remote_server.get("request_websocket", None)
+                request_ws_url = f"ws://{remote_server['host']}:{remote_server['port']}"
+                # request_ws_url = f"wss://{remote_server['host']}"
+                if not request_websocket or request_websocket.closed:
+                    try:
+                        async with websockets.connect(request_ws_url) as request_websocket:
+                            self.remote_servers[remote_server["name"]]["request_websocket"] = request_websocket
+                            logger.info(f"Connection to {request_ws_url} successfully, sending attendance")
+                            await request_websocket.send(attendance_json())
+                            await self.exchange_handler(request_websocket, remote_server["name"])
+                    except websockets.WebSocketException as e:
+                        logger.warning(f"Connection to {request_ws_url} failed: {e}")
+                    except ConnectionRefusedError as e:
+                        logger.warning(f"Connection to {request_ws_url} failed: {e}")
+                    except TimeoutError as e:
+                        logger.warning(f"Connection timeout {request_ws_url} failed: {e}")
+                    finally:
+                        await asyncio.sleep(10)
+                else:
                     await asyncio.sleep(10)
-            else:
-                await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            logger.error("connect websocket was cancelled.")
 
 
     def connect_remote_servers(self):

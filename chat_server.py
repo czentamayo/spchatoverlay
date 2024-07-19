@@ -1,8 +1,13 @@
 import logging
 import logging.config
 import yaml
-
 import os
+import sys
+import traceback
+import websockets
+import aiofiles
+import hashlib
+
 
 log_directory = 'log'
 
@@ -21,11 +26,14 @@ logging.config.dictConfig(config)
 # Create logger
 logger = logging.getLogger(__name__)
 
-import traceback
-import websockets
-import aiofiles
-import hashlib
 
+def log_unhandled_exception(exc_type, exc_value, exc_traceback):
+    # Log the unhandled exception with traceback
+    logger.exception("An unhandled exception occurred:", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+# Set the custom exception handler
+sys.excepthook = log_unhandled_exception
 
 
 class ChatServer:

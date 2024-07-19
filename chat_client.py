@@ -1,8 +1,16 @@
 import logging
 import logging.config
 import yaml
-
 import os
+import asyncio
+import websockets
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives import serialization
+import base64
+import json
+import traceback
+import sys
 
 log_directory = 'log'
 
@@ -18,17 +26,16 @@ with open('client_logging.yaml', 'r') as config_file:
 logging.config.dictConfig(config)
 
 # Create logger
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('chat_client')
 
-import asyncio
-import websockets
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from cryptography.hazmat.primitives import serialization
-import base64
-import json
-import traceback
 
+def log_unhandled_exception(exc_type, exc_value, exc_traceback):
+    # Log the unhandled exception with traceback
+    logger.exception("An unhandled exception occurred:", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+# Set the custom exception handler
+sys.excepthook = log_unhandled_exception
 
 
 # Generate RSA key pair
@@ -73,7 +80,7 @@ def parse_json(json_str: str) -> dict:
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:
-        logger.warn("JSON parsing error")
+        logger.warning(f"JSON parsing error: {json_str}")
         return {}
 
 
@@ -151,7 +158,7 @@ async def start_client():
                     await websocket.send(local_public_key_pem)
                     break
                 elif response == "Authentication failed":
-                    logger.warn("Authentication failed. Disconnecting.")
+                    logger.warning("Authentication failed. Disconnecting.")
                     await websocket.close()
                     return
 
@@ -176,7 +183,7 @@ async def start_client():
                             file_message = f"FILE {target_username} {file_path} {encrypted_file_data}"
                             await websocket.send(file_message)
                     except FileNotFoundError:
-                        logger.warn(f"File {file_path} not found.")
+                        logger.warning(f"File {file_path} not found.")
                 else:
                     if message.startswith("@"):
                         target_username_str, info = message.split(" ", 1)

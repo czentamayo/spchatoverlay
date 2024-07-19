@@ -1,24 +1,25 @@
-# server_name: s1
-# chat_server:
-#   host: localhost
-#   port: 12345
-# exchange_server:
-#   host: localhost
-#   port: 5555
-# remote_servers:
-#   - name: s2
-#     host: 127.0.0.1
-#     port: 5552
-  
-
-server_name: s2
+server_name: s4
 chat_server:
   host: localhost
+  # host: 172.16.11.7
   port: 12342
 exchange_server:
-  host: localhost
-  port: 5552
+  # host: 10.13.101.145
+  host: 172.16.11.7
+  port: 5555
 remote_servers:
-  - name: s4
-    host: 127.0.0.1
+  - name: s1
+    host: 10.13.84.131
     port: 5555
+  # - name: s3
+  #   host: 10.13.83.163
+  #   port: 5555
+  # # - name: s11
+  #   host: 10.13.101.178
+  #   port: 5555
+  # - name: s6
+  #   host: 10.13.81.121
+  #   port: 5555
+  # - name: s2
+  #   host: 10.13.89.245
+  #   port: 5555
