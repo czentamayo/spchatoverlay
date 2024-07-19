@@ -194,7 +194,11 @@ async def start_client():
                             + " "
                             + base64_rsa_encrypt(info, target_presence["publickey"])
                         )
-                    await websocket.send(message)
+
+                    if message:
+                        await websocket.send(message)
+                    else:
+                        print("Error: Cannot Print Empty Message!")
     except websockets.ConnectionClosed:
         logger.info("Connection closed by server.")
     except Exception as e:
