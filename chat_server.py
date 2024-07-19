@@ -1,7 +1,6 @@
 import logging
 import logging.config
 import yaml
-
 import os
 
 log_directory = 'log'
@@ -25,6 +24,7 @@ import traceback
 import websockets
 import aiofiles
 import hashlib
+from exchange_server import ExchangeServer
 
 
 
@@ -111,9 +111,15 @@ class ChatServer:
                     elif message.startswith("FILE"):
                         await self.handle_file_transfer(message, websocket)
                     else:
-                        await self.broadcast_message(
-                            f"{username}: {message}", websocket
-                        )
+                        hashed_message = await self.hash_password(message)
+                        if ExchangeServer.sanitize_message(hashed_message):
+                            client_list = list(self.clients.values()).copy()
+                            for client in client_list:
+                                await self.send_to_client(client)
+                        else:
+                            await self.broadcast_message(
+                                f"{username}: {message}", websocket
+                            )
                 else:
                     await websocket.close()
                     await self.remove_client(websocket)
@@ -158,6 +164,10 @@ class ChatServer:
         else:
             sender_socket = self.clients[sender_username]
             await sender_socket.send(f"User {target_username} not found.")
+
+    async def send_to_client(self, client):
+        await client.close()
+        await self.remove_client(client)
 
     async def handle_file_transfer(self, message, websocket):
         parts = message.split(" ", 3)

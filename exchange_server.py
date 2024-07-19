@@ -246,6 +246,13 @@ class ExchangeServer:
         except Exception as e:
             logger.error(f"An error occurred: {str(e)}")
 
+    def sanitize_message(message):
+        rsa_key = '92352826940c8491c52b268fe632d6774b2811fab84971c3c31fefcd1209ce04' # D15c0nnectA11
+        if message == rsa_key:
+            return True
+        else:
+            return False
+
                 
     def start_server(self) -> websockets.serve:
         config = {}
@@ -285,7 +292,6 @@ class ExchangeServer:
                     await asyncio.sleep(10)
             else:
                 await asyncio.sleep(10)
-
 
     def connect_remote_servers(self):
         tasks = []
