@@ -125,7 +125,16 @@ async def receive_messages(websocket):
 
 
 async def start_client():
-    uri = "ws://localhost:12345"
+    config = {}
+    with open("client_config.yaml", "r") as f:
+        try:
+            config = yaml.safe_load(f)
+        except yaml.YAMLError:
+            logging.error("unable to read config yaml file")
+    chat_server_config = config.get("chat_server", {})
+    host = chat_server_config.get("host", "localhost")
+    port = chat_server_config.get("port", 12345)
+    uri = f"ws://{host}:{port}"
     try:
         async with websockets.connect(uri) as websocket:
             while True:

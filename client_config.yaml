@@ -1,0 +1,4 @@
+# where client should connect to 
+chat_server:
+  host: localhost
+  port: 12345
