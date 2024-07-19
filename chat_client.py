@@ -1,3 +1,25 @@
+import logging
+import logging.config
+import yaml
+
+import os
+
+log_directory = 'log'
+
+# Create the log directory if it doesn't exist
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
+
+# Load logging configuration from YAML file
+with open('client_logging.yaml', 'r') as config_file:
+    config = yaml.safe_load(config_file)
+
+# Configure logging based on the YAML configuration
+logging.config.dictConfig(config)
+
+# Create logger
+logger = logging.getLogger(__name__)
+
 import asyncio
 import websockets
 from cryptography.hazmat.primitives import hashes
@@ -6,6 +28,8 @@ from cryptography.hazmat.primitives import serialization
 import base64
 import json
 import traceback
+
+
 
 # Generate RSA key pair
 local_private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -43,7 +67,7 @@ def parse_json(json_str: str) -> dict:
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:
-        print("JSON parsing error")
+        logger.warn("JSON parsing error")
         return {}
 
 
@@ -83,15 +107,15 @@ async def receive_messages(websocket):
                 else:
                     break
             except websockets.ConnectionClosed:
-                print("Server connection closed.")
+                logger.info("Server connection closed.")
                 break
             except Exception as e:
-                print(f"Error receiving message: {e}")
+                logger.error(f"Error receiving message: {e}")
                 traceback.print_exc()
                 break
     finally:
         await websocket.close()
-        print("Connection closed gracefully.")
+        logger.info("Connection closed gracefully.")
 
 
 async def start_client():
@@ -112,7 +136,7 @@ async def start_client():
                     await websocket.send(local_public_key_pem)
                     break
                 elif response == "Authentication failed":
-                    print("Authentication failed. Disconnecting.")
+                    logger.warn("Authentication failed. Disconnecting.")
                     await websocket.close()
                     return
 
@@ -139,7 +163,7 @@ async def start_client():
                             base64.b64encode(file_data).decode("utf-8")
                         )
                     except FileNotFoundError:
-                        print(f"File {file_path} not found.")
+                        logger.warn(f"File {file_path} not found.")
                 else:
                     if message.startswith("@"):
                         target_username_str, info = message.split(" ", 1)
@@ -159,11 +183,11 @@ async def start_client():
                         )
                     await websocket.send(message)
     except websockets.ConnectionClosed:
-        print("Connection closed by server.")
+        logger.info("Connection closed by server.")
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
     finally:
-        print("Client shutting down.")
+        logger.info("Client shutting down.")
 
 
 if __name__ == "__main__":

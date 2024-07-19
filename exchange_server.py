@@ -1,10 +1,33 @@
+import logging
+import logging.config
+import yaml
+
+import os
+
+log_directory = 'log'
+
+# Create the log directory if it doesn't exist
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
+
+
+# Load logging configuration from YAML file
+with open('server_logging.yaml', 'r') as config_file:
+    config = yaml.safe_load(config_file)
+
+# Configure logging based on the YAML configuration
+logging.config.dictConfig(config)
+
+# Create logger
+logger = logging.getLogger(__name__)
+
 import json
 from dataclasses import dataclass
-import logging
 from typing import List
 import websockets
 import yaml
 import asyncio
+
 
 
 @dataclass
@@ -73,7 +96,7 @@ def parse_json(json_str: str) -> dict:
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:
-        logging.warning("JSON parsing error")
+        logger.warning("JSON parsing error")
         return {}
 
 
@@ -102,7 +125,7 @@ class ExchangeServer:
 
     async def send_message_to_server(self, sender:str, target_server:str, target_client:str, msg:str):
         remote_server = self.remote_servers.get(target_server, None)
-        print(remote_server)
+        logger.debug(remote_server)
         if remote_server:
             if remote_server.get("websocket", None):
                 await remote_server["websocket"].send(
@@ -154,13 +177,13 @@ class ExchangeServer:
                 ]
                 # disconnect if unknown server
                 if not matched_remote_servers:
-                    print("Unknown server, disconnecting...")
+                    logger.warn("Unknown server, disconnecting...")
                     await websocket.close()
                     return
                 remote_server = matched_remote_servers[0]
                 # assoicate the websocket with remote server
                 remote_server["websocket"] = websocket
-                print(f"accepted connection from {remote_server}")
+                logger.info(f"accepted connection from {remote_server}")
             else:
                 matched_remote_servers = [
                     server
@@ -172,7 +195,7 @@ class ExchangeServer:
             self.remote_servers[remote_server["name"]] = remote_server
             async for message in websocket:
                 try:
-                    print(f"Received from exchange server: {message}" )
+                    logger.debug(f"Received from exchange server: {message}" )
                     exchange = parse_json(str(message))
                     exchange_type = exchange.get("tag", None)
                     if exchange_type == "message":
@@ -191,7 +214,7 @@ class ExchangeServer:
                         if to_server != self.server_name:
                             continue
                         if self.presences['LOCAL'].get(exchange_to, None):
-                            print("forwarding to client")
+                            logger.debug("forwarding to client")
                             await self.chat_server.send_message_to_client(
                                 exchange_info, exchange_from, to_client
                         )
@@ -211,17 +234,17 @@ class ExchangeServer:
                                 presence["nickname"],
                                 presence["publickey"],
                             )
-                        print(f"updated presence: {self.presences}")
+                        logger.debug(f"updated presence: {self.presences}")
                 except json.JSONDecodeError:
-                    print("incorrect json format")
+                    logger.warn("incorrect json format")
         except websockets.exceptions.ConnectionClosedOK:
             remote_address = websocket.remote_address
-            print(f"Server {remote_address} closed the connection.")
+            logger.info(f"Server {remote_address} closed the connection.")
         except websockets.exceptions.ConnectionClosedError as e:
             remote_address = websocket.remote_address
-            print(f"Connection {remote_address} closed with error: {e.code}, {e.reason}")
+            logger.error(f"Connection {remote_address} closed with error: {e.code}, {e.reason}")
         except Exception as e:
-            print(f"An error occurred: {str(e)}")
+            logger.error(f"An error occurred: {str(e)}")
 
                 
     def start_server(self) -> websockets.serve:
@@ -251,13 +274,13 @@ class ExchangeServer:
                 try:
                     async with websockets.connect(request_ws_url) as request_websocket:
                         self.remote_servers[remote_server["name"]]["request_websocket"] = request_websocket
-                        print(f"Connection to {request_ws_url} successfully, sending attendance")
+                        logger.info(f"Connection to {request_ws_url} successfully, sending attendance")
                         await request_websocket.send(attendance_json())
                         await self.exchange_handler(request_websocket, remote_server["name"])
                 except websockets.WebSocketException as e:
-                    print(f"Connection to {request_ws_url} failed: {e}")
+                    logger.warn(f"Connection to {request_ws_url} failed: {e}")
                 except ConnectionRefusedError as e:
-                    print(f"Connection to {request_ws_url} failed: {e}")
+                    logger.warn(f"Connection to {request_ws_url} failed: {e}")
                 finally:
                     await asyncio.sleep(10)
             else:

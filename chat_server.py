@@ -1,9 +1,31 @@
+import logging
+import logging.config
+import yaml
+
+import os
+
+log_directory = 'log'
+
+# Create the log directory if it doesn't exist
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
+
+
+# Load logging configuration from YAML file
+with open('server_logging.yaml', 'r') as config_file:
+    config = yaml.safe_load(config_file)
+
+# Configure logging based on the YAML configuration
+logging.config.dictConfig(config)
+
+# Create logger
+logger = logging.getLogger(__name__)
+
 import traceback
 import websockets
 import aiofiles
 import hashlib
-import yaml
-import logging
+
 
 
 class ChatServer:
@@ -45,7 +67,7 @@ class ChatServer:
                 await websocket.send("Authentication failed")
                 return None, None
         except websockets.exceptions.ConnectionClosed:
-            print("Client disconnected during authentication.")
+            logger.info("Client disconnected during authentication.")
             return None, None
 
     async def handle_client(self, websocket):
@@ -60,14 +82,14 @@ class ChatServer:
             "LOCAL", username, username, user_pub_key
         )
         welcome_message = f"{username} has joined the chat.\n"
-        print(welcome_message)
+        logger.info(welcome_message)
         await self.broadcast_message(welcome_message, websocket)
 
         try:
             while True:
                 message = await websocket.recv()
                 if message:
-                    print(f"Received from {username}: {message}")
+                    logger.debug(f"Received from {username}: {message}")
                     if message.startswith("@"):
                         message_array = message.split(" ", 1)
                         if len(message_array) < 2:
@@ -99,7 +121,7 @@ class ChatServer:
         except websockets.ConnectionClosed:
             await self.remove_client(websocket)
         except Exception as e:
-            print(f"Error: {e}")
+            logger.error(f"Error: {e}")
             await self.remove_client(websocket)
 
 
@@ -123,7 +145,7 @@ class ChatServer:
 
 
     async def send_message_to_client(self, message, sender_username, target_username):
-        print(f"sending to {target_username}")
+        logger.info(f"sending to {target_username}")
         if target_username in self.clients:
             target_socket = self.clients[target_username]
             try:
@@ -162,7 +184,7 @@ class ChatServer:
             del self.clients[username]
             del self.client_names[websocket]
             await self.exchange_server.remove_presence("LOCAL", f'{username}@{self.server_name}')
-            print(f"{username} has left the chat.")
+            logger.info(f"{username} has left the chat.")
             await self.broadcast_message(f"{username} has left the chat.", websocket)
 
     def start_server(self):
@@ -177,5 +199,5 @@ class ChatServer:
         host = chat_server_config.get("host", "localhost")
         port = chat_server_config.get("port", 12345)
         server = websockets.serve(self.handle_client, host, port)
-        print(f"Server started at {host}:{port}")
+        logger.info(f"Server started at {host}:{port}")
         return server
