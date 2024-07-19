@@ -62,6 +62,12 @@ def base64_rsa_decrypt(encrypted_message: str) -> str:
         base64.b64decode(encrypted_message), default_padding
     ).decode("utf-8")
 
+
+def encrypt_file_data(file_data):
+    encrypted_data = base64.b64encode(file_data).decode("utf-8")
+    return encrypted_data
+
+
 # Convert json string to dict
 def parse_json(json_str: str) -> dict:
     try:
@@ -119,7 +125,16 @@ async def receive_messages(websocket):
 
 
 async def start_client():
-    uri = "ws://localhost:12345"
+    config = {}
+    with open("client_config.yaml", "r") as f:
+        try:
+            config = yaml.safe_load(f)
+        except yaml.YAMLError:
+            logging.error("unable to read config yaml file")
+    chat_server_config = config.get("chat_server", {})
+    host = chat_server_config.get("host", "localhost")
+    port = chat_server_config.get("port", 12345)
+    uri = f"ws://{host}:{port}"
     try:
         async with websockets.connect(uri) as websocket:
             while True:
@@ -157,11 +172,9 @@ async def start_client():
                     try:
                         with open(file_path, "rb") as file:
                             file_data = file.read()
-                        file_message = f"FILE {target_username} {file_path}"
-                        await websocket.send(file_message)
-                        await websocket.send(
-                            base64.b64encode(file_data).decode("utf-8")
-                        )
+                            encrypted_file_data = encrypt_file_data(file_data)
+                            file_message = f"FILE {target_username} {file_path} {encrypted_file_data}"
+                            await websocket.send(file_message)
                     except FileNotFoundError:
                         logger.warn(f"File {file_path} not found.")
                 else:

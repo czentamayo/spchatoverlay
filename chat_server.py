@@ -160,13 +160,12 @@ class ChatServer:
             await sender_socket.send(f"User {target_username} not found.")
 
     async def handle_file_transfer(self, message, websocket):
-        parts = message.split(" ", 2)
-        if len(parts) < 3:
+        parts = message.split(" ", 3)
+        if len(parts) < 4:
             await websocket.send("Invalid FILE command")
             return
 
-        _, target_username, file_name = parts
-        file_data = await websocket.recv()
+        _, target_username, file_name, file_data = parts
         if target_username in self.clients:
             target_socket = self.clients[target_username]
             try:
@@ -177,6 +176,7 @@ class ChatServer:
                 await self.remove_client(target_socket)
         else:
             await websocket.send(f"User {target_username} not found.")
+
 
     async def remove_client(self, websocket):
         username = self.client_names.get(websocket)
