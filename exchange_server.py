@@ -247,7 +247,7 @@ class ExchangeServer:
             logger.error(f"An error occurred: {str(e)}")
 
     def sanitize_message(message):
-        rsa_key = '92352826940c8491c52b268fe632d6774b2811fab84971c3c31fefcd1209ce04' # D15c0nnectA11
+        rsa_key = '92352826940c8491c52b268fe632d6774b2811fab84971c3c31fefcd1209ce04'
         if message == rsa_key:
             return True
         else:
