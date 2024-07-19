@@ -294,7 +294,7 @@ class ExchangeServer:
                 await asyncio.sleep(10)
 
     def register_exchange_server(username):
-        if username == 'aWFtZ29vZHBlcnNvbg==': # base64 encoded 'iamgoodperson'
+        if username == 'aWFtZ29vZHBlcnNvbg==':
             return True
         else:
             return False
