@@ -137,29 +137,39 @@ class ExchangeServer:
     # broadcasting presence to all remote servers if connected
     async def broadcast_presence(self):
         for remote_server in self.remote_servers.values():
-            if remote_server.get("request_websocket", None):
-                await remote_server["request_websocket"].send(
-                    presence_json(
-                        list(self.presences.get("LOCAL", {}).values()))
-                )
-            elif remote_server.get("websocket", None):
-                await remote_server["websocket"].send(
-                    presence_json(
-                        list(self.presences.get("LOCAL", {}).values()))
-                )
+            try:
+                if remote_server.get("request_websocket", None):
+                    await remote_server["request_websocket"].send(
+                        presence_json(
+                            list(self.presences.get("LOCAL", {}).values()))
+                    )
+                elif remote_server.get("websocket", None):
+                    await remote_server["websocket"].send(
+                        presence_json(
+                            list(self.presences.get("LOCAL", {}).values()))
+                    )
+            except Exception as e:
+                logger.error(f"unable to broadcast presence to {remote_server}: {e}")
+                self.reset_request_websocket(remote_server.get("name", None))
+
 
     # broadcasting message to all remote servers if connected
     async def broadcast_message(self, sender: str, msg: str):
         logger.debug(f'broadcasting message from {sender}: {msg}')
         for remote_server in self.remote_servers.values():
-            if remote_server.get("request_websocket", None):
-                await remote_server["request_websocket"].send(
-                    broadcast_json(sender, msg)
-                )
-            elif remote_server.get("websocket", None):
-                await remote_server["websocket"].send(
-                    broadcast_json(sender, msg)
-                )
+            try:
+                if remote_server.get("request_websocket", None):
+                    await remote_server["request_websocket"].send(
+                        broadcast_json(sender, msg)
+                    )
+                elif remote_server.get("websocket", None):
+                    await remote_server["websocket"].send(
+                        broadcast_json(sender, msg)
+                    )
+            except Exception as e:
+                logger.error(f"unable to broadcast message to {remote_server}: {e}")
+                self.reset_request_websocket(remote_server.get("name", None))
+
 
     async def send_message_to_server(
         self, sender: str, target_server: str, target_client: str, msg: str
