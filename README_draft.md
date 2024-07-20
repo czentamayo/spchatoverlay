@@ -124,7 +124,14 @@ EXIT
 ### 1. Test Plan
 ![Alt Text](snapshot/test_sheet.jpeg)<img width="100">
 
-### 2. Test Group Information  
+### 2. Regression Test
+Regression Test can be run with the following command:
+```python
+pytest -v ./test_regression.py
+
+```
+
+### 3. Test Group Information  
 Group 1  
 ?Group 3  
 Group 8  
