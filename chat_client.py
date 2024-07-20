@@ -216,7 +216,6 @@ async def start_client():
                         continue
                     _, target_username, file_path = parts
                     try:
-                        logger.debug(f'current presence: {current_presence}')
                         target_presence_array = [
                             presence
                             for presence in current_presence

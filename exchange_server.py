@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import List
 import websockets
 import asyncio
+import uuid
 
 
 log_directory = "log"
@@ -277,31 +278,43 @@ class ExchangeServer:
                     logger.debug(f"Received from exchange server: {message}")
                     exchange = parse_json(str(message))
                     exchange_type = exchange.get("tag", None)
-                    if exchange_type == "message":
+                    if exchange_type == "message" or exchange_type == "file":
                         exchange_from = exchange.get("from", None)
                         exchange_to = exchange.get("to", None)
                         exchange_info = exchange.get("info", None)
 
                         if exchange_to == 'public':
-                            await self.chat_server.send_message_to_all_clients(exchange_info, exchange_from)
+                            if exchange_type == "message":
+                                await self.chat_server.send_message_to_all_clients(exchange_info, exchange_from)
 
                         # message validation
                         if not exchange_from or not exchange_to or not exchange_info:
+                            logger.warning(f"Incorrect message format: {message}")
                             continue
                         to_array = exchange_to.split("@")
                         if len(to_array) < 2:
+                            logger.warning(f"Incorrect receipent format: {exchange_to}")
                             continue
                         to_client = to_array[0]
                         to_server = to_array[1]
                         if to_server != self.server_name:
+                            logger.warning(f"Invalid receipent server: {to_server}")
                             continue
                         if self.presences["LOCAL"].get(exchange_to, None):
-                            logger.debug("forwarding to client")
-                            await self.chat_server.send_message_to_client(
-                                exchange_info, exchange_from, to_client
-                            )
-                    elif exchange_type == "file":
-                        pass
+                            logger.debug(f"forwarding to client {exchange_to}")
+                            if exchange_type == "message":
+                                await self.chat_server.send_message_to_client(
+                                    exchange_info, exchange_from, to_client
+                                )
+                            elif exchange_type == "file":
+                                exchange_filename = exchange.get("filename", f"{str(uuid.uuid4())}.tmp")
+                                await self.chat_server.handle_file_transfer(
+                                    to_client, exchange_filename, exchange_info
+                                )
+                        else:
+                            logger.warning(f"User {exchange_to} not presence")
+                            continue
+
                     elif exchange_type == "check":
                         # logger.debug(f"sending checked to {websocket.remote_address}")
                         await websocket.send(check_json(True))
@@ -321,7 +334,7 @@ class ExchangeServer:
                             )
                         logger.debug(f"updated presence: {self.presences}")
                 except json.JSONDecodeError:
-                    logger.warning("incorrect json format")
+                    logger.warning(f"incorrect json format: {message}")
         except websockets.exceptions.ConnectionClosedOK:
             remote_address = websocket.remote_address
             logger.info(f"Server {remote_address} closed the connection.")

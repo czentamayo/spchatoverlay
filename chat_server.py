@@ -202,7 +202,7 @@ class ChatServer:
 
 
 
-    async def handle_file_transfer(self, target_username, file_name, file_data, websocket):
+    async def handle_file_transfer(self, target_username, file_name, file_data, websocket=None):
         if target_username in self.clients:
             target_socket = self.clients[target_username]
             try:
@@ -211,7 +211,8 @@ class ChatServer:
                 await target_socket.close()
                 await self.remove_client(target_socket)
         else:
-            await websocket.send(f"User {target_username} not found.")
+            if websocket is not None:
+                await websocket.send(f"User {target_username} not found.")
 
 
     async def remove_client(self, websocket):
