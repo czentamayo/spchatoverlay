@@ -12,14 +12,17 @@ from exchange_server import ExchangeServer
 
 import asyncio
 
+
 async def main():
+    # connection with peer server
     exchange_server = ExchangeServer()
+    # client interaction handling server
     chat_server = ChatServer()
     exchange_server.set_chat_server(chat_server)
     chat_server.set_exchange_server(exchange_server)
     await asyncio.gather(
-        exchange_server.start_server(), 
-        chat_server.start_server(), 
+        exchange_server.start_server(),
+        chat_server.start_server(),
         *exchange_server.connect_remote_servers()
     )
 

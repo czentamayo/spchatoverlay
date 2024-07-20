@@ -46,6 +46,18 @@ sys.excepthook = log_unhandled_exception
 
 
 class ChatServer:
+    """
+    ChatServer handles interaction with clients, including authentication,
+    message and file exchange between clients, and message and file forwarding
+    to exchange server
+
+    Attributes:
+        clients: dictionary of connected clients in format:
+            { <username>: websocket }
+        client_names: dictionary of client names with format:
+            { <websocket>: username }
+        exchange_server: exchange server for forwarding messages and file
+    """
 
     def __init__(self):
         self.clients = {}
@@ -69,6 +81,9 @@ class ChatServer:
         return h.hexdigest()
 
     async def authenticate(self, websocket):
+        """
+        Start authentication exchange with client
+        """
         try:
             await websocket.send("Enter your username: ")
             username = (await websocket.recv()).strip()
@@ -88,13 +103,20 @@ class ChatServer:
             return None, None
 
     async def handle_client(self, websocket):
+        """
+        Handle all message from listening websocket. It will only process
+        if authentication is successful.
+        """
         username, user_pub_key = await self.authenticate(websocket)
         if not username:
             await websocket.close()
             return
 
+        # Successful authentication represent online client
         self.clients[username] = websocket
         self.client_names[websocket] = username
+
+        # Update presence on the exchange server
         await self.exchange_server.update_presence(
             "LOCAL", username, username, user_pub_key
         )
@@ -107,17 +129,24 @@ class ChatServer:
                 message = await websocket.recv()
                 if message:
                     logger.debug(f"Forwarding from {username}: {message}")
+
+                    # command for direct message delivery
+                    # expected format: @<user>@<server_name> <message>
                     if message.startswith("@"):
                         message_array = message.split(" ", 1)
                         if len(message_array) < 2:
                             continue
                         target, msg = message.split(" ", 1)
                         target_array = target.split("@")
+
+                        # indication of local client
                         if len(target_array) < 3 or target_array[2] == self.server_name:
                             # local message, e.g. @c1, @c1@s4
                             await self.send_message_to_client(
                                 msg, username, target_array[1]
                             )
+
+                        # remote client
                         else:
                             await self.exchange_server.send_message_to_server(
                                 f"{username}@{self.server_name}",
@@ -125,21 +154,26 @@ class ChatServer:
                                 target_array[1],
                                 msg
                             )
+
+                    # command for sending file
                     elif message.startswith("FILE"):
                         parts = message.split(" ", 3)
                         if len(parts) < 4:
                             logger.error("Invalid client FILE command")
                             await websocket.send("Invalid FILE command")
                             continue
+
+                        # expected format: FILE <user>@<server_name> <filename> <filedata>
                         _, target_username, file_name, file_data = parts
                         target_user_array = target_username.split("@")
                         if len(target_user_array) < 2:
-                            # local file, e.g. c1 
+                            # local client, e.g. c1 
                             await self.handle_file_transfer(target_username, file_name, file_data, websocket)
                         elif target_user_array[1] == self.server_name:
-                            # local file, e.g. c1@s4
+                            # local client, e.g. c1@s4
                             await self.handle_file_transfer(target_user_array[0], file_name, file_data, websocket)
                         else:
+                            # remote client
                             await self.exchange_server.send_file_to_server(
                                 f"{username}@{self.server_name}",
                                 target_user_array[1],
@@ -147,7 +181,10 @@ class ChatServer:
                                 file_name,
                                 file_data
                             )
+
+                    # everything else considered as broadcast message
                     else:
+                        # broadcast message to all clients
                         await self.broadcast_message(
                             f"{username}: {message}", websocket
                         )
@@ -165,6 +202,9 @@ class ChatServer:
 
 
     async def broadcast_message(self, message, sender_socket):
+        """
+        broadcast message to all clients
+        """
         for client in self.clients.values():
             if client != sender_socket:
                 try:
@@ -175,6 +215,9 @@ class ChatServer:
 
 
     async def broadcast_presence(self, presence_json):
+        """
+        broadcast presence to all clients
+        """
         for client in self.clients.values():
             try:
                 await client.send(presence_json)
@@ -184,6 +227,14 @@ class ChatServer:
 
 
     async def send_message_to_client(self, message, sender_username, target_username):
+        """
+        Send message to target username
+
+        Args:
+            message: message to send
+            sender_username: username of sender in format of <username>@<server_name>
+            target_username: username of target in format of <username>@<server_name>
+        """
         logger.info(f"sending to {target_username}")
         if target_username in self.clients:
             target_socket = self.clients[target_username]
@@ -199,7 +250,7 @@ class ChatServer:
             await sender_socket.send(f"User {target_username} not found.")
 
 
-    # send message to all clients
+    # broadcast message from exchange server to all clients
     async def send_message_to_all_clients(self, message, sender_username):
         for target_socket in self.clients.values():
             try:
@@ -209,8 +260,7 @@ class ChatServer:
             except:
                 await target_socket.close()
 
-
-
+    # Send file to local user
     async def handle_file_transfer(self, target_username, file_name, file_data, websocket=None):
         if target_username in self.clients:
             target_socket = self.clients[target_username]
@@ -223,12 +273,13 @@ class ChatServer:
             if websocket is not None:
                 await websocket.send(f"User {target_username} not found.")
 
-
     async def remove_client(self, websocket):
         username = self.client_names.get(websocket)
         if username:
             del self.clients[username]
             del self.client_names[websocket]
+
+            # need to update presence
             await self.exchange_server.remove_presence("LOCAL", f'{username}@{self.server_name}')
             logger.info(f"{username} has left the chat.")
             await self.broadcast_message(f"{username} has left the chat.", websocket)
