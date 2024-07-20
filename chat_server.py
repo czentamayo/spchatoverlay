@@ -97,7 +97,7 @@ class ChatServer:
             while True:
                 message = await websocket.recv()
                 if message:
-                    logger.debug(f"Received from {username}: {message}")
+                    logger.debug(f"Forwarding from {username}: {message}")
                     if message.startswith("@"):
                         message_array = message.split(" ", 1)
                         if len(message_array) < 2:
@@ -117,7 +117,27 @@ class ChatServer:
                                 msg
                             )
                     elif message.startswith("FILE"):
-                        await self.handle_file_transfer(message, websocket)
+                        parts = message.split(" ", 3)
+                        if len(parts) < 4:
+                            logger.error("Invalid client FILE command")
+                            await websocket.send("Invalid FILE command")
+                            continue
+                        _, target_username, file_name, file_data = parts
+                        target_user_array = target_username.split("@")
+                        if len(target_user_array) < 2:
+                            # local file, e.g. c1 
+                            await self.handle_file_transfer(target_username, file_name, file_data, websocket)
+                        elif target_user_array[1] == self.server_name:
+                            # local file, e.g. c1@s4
+                            await self.handle_file_transfer(target_user_array[0], file_name, file_data, websocket)
+                        else:
+                            await self.exchange_server.send_file_to_server(
+                                f"{username}@{self.server_name}",
+                                target_user_array[1],
+                                target_user_array[0],
+                                file_name,
+                                file_data
+                            )
                     else:
                         await self.broadcast_message(
                             f"{username}: {message}", websocket
@@ -167,13 +187,8 @@ class ChatServer:
             sender_socket = self.clients[sender_username]
             await sender_socket.send(f"User {target_username} not found.")
 
-    async def handle_file_transfer(self, message, websocket):
-        parts = message.split(" ", 3)
-        if len(parts) < 4:
-            await websocket.send("Invalid FILE command")
-            return
 
-        _, target_username, file_name, file_data = parts
+    async def handle_file_transfer(self, target_username, file_name, file_data, websocket):
         if target_username in self.clients:
             target_socket = self.clients[target_username]
             try:

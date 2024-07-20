@@ -133,7 +133,7 @@ async def receive_messages(websocket):
                     full_file_path = f'{download_directory}/{file_name}.{get_current_timestamp()}'
                     with open(full_file_path, "wb") as file:
                         file.write(decrypt_file_data(file_data))
-                    print(f"Received file {full_file_path}")
+                    print(f"Received file at {full_file_path}")
                 elif message:
                     # special handling for updating presence, which contains public key
                     if "tag" in message and "presence" in message:
@@ -217,14 +217,13 @@ async def start_client():
                     _, target_username, file_path = parts
                     try:
                         logger.debug(f'current presence: {current_presence}')
-                        full_target_username = f'{target_username}@s4'
                         target_presence_array = [
                             presence
                             for presence in current_presence
-                            if presence["jid"] == full_target_username
+                            if presence["jid"] == target_username
                         ]
                         if len(target_presence_array) < 1:
-                            logger.warning(f"User {full_target_username} not present")
+                            logger.warning(f"User {target_username} not present")
                             continue
                         target_presence = target_presence_array[0]
                         with open(file_path, "rb") as file:

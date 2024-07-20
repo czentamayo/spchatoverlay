@@ -143,6 +143,21 @@ class ExchangeServer:
                     message_json(sender, f'{target_client}@{target_server}', msg)
                 )
 
+
+    async def send_file_to_server(self, sender:str, target_server:str, target_client:str, filename:str, encrypted_file_data:str):
+        remote_server = self.remote_servers.get(target_server, None)
+        logger.debug(f'sending file from {sender} to {remote_server}')
+        if remote_server:
+            if remote_server.get("request_websocket", None):
+                await remote_server["request_websocket"].send(
+                    file_json(sender, f'{target_client}@{target_server}', filename, encrypted_file_data)
+                )
+            elif remote_server.get("websocket", None):
+                await remote_server["websocket"].send(
+                    file_json(sender, f'{target_client}@{target_server}', filename, encrypted_file_data)
+                )
+
+
     async def update_presence(
         self, server_name: str, client_jid: str, nickname: str, publickey: str
     ):
