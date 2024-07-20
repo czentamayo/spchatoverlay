@@ -139,15 +139,17 @@ class ExchangeServer:
         for remote_server in self.remote_servers.values():
             if remote_server.get("request_websocket", None):
                 await remote_server["request_websocket"].send(
-                    presence_json(list(self.presences.get("LOCAL", {}).values()))
+                    presence_json(
+                        list(self.presences.get("LOCAL", {}).values()))
                 )
             elif remote_server.get("websocket", None):
                 await remote_server["websocket"].send(
-                    presence_json(list(self.presences.get("LOCAL", {}).values()))
+                    presence_json(
+                        list(self.presences.get("LOCAL", {}).values()))
                 )
 
     # broadcasting message to all remote servers if connected
-    async def broadcast_message(self, sender:str, msg: str):
+    async def broadcast_message(self, sender: str, msg: str):
         logger.debug(f'broadcasting message from {sender}: {msg}')
         for remote_server in self.remote_servers.values():
             if remote_server.get("request_websocket", None):
@@ -159,7 +161,6 @@ class ExchangeServer:
                     broadcast_json(sender, msg)
                 )
 
-
     async def send_message_to_server(
         self, sender: str, target_server: str, target_client: str, msg: str
     ):
@@ -168,11 +169,13 @@ class ExchangeServer:
         if remote_server:
             if remote_server.get("request_websocket", None):
                 await remote_server["request_websocket"].send(
-                    message_json(sender, f"{target_client}@{target_server}", msg)
+                    message_json(
+                        sender, f"{target_client}@{target_server}", msg)
                 )
             elif remote_server.get("websocket", None):
                 await remote_server["websocket"].send(
-                    message_json(sender, f"{target_client}@{target_server}", msg)
+                    message_json(
+                        sender, f"{target_client}@{target_server}", msg)
                 )
 
     async def send_file_to_server(
@@ -224,7 +227,6 @@ class ExchangeServer:
         else:
             await self.chat_server.broadcast_presence(presence_json(flatten_presence))
 
-
     async def remove_presence(self, server_name: str, client_jid: str):
         target_server_presence = self.presences.get(server_name, dict())
         target_server_presence.pop(client_jid, None)
@@ -238,12 +240,30 @@ class ExchangeServer:
             ]
             await self.chat_server.broadcast_presence(presence_json(flatten_presence))
 
-
     def get_presences(self) -> dict:
         return self.presences
 
+    def reset_request_websocket(self, server_name: str):
+        remote_server = self.remote_servers.get(server_name, None)
+        if remote_server:
+            self.remote_servers[server_name][
+                "request_websocket"
+            ] = None
+
+    def reset_websocket(self, server_ip: str):
+        matched_remote_servers = [
+            server
+            for server in self.remote_servers.values()
+            if server["host"] == server_ip
+        ]
+        if len(matched_remote_servers) < 1:
+            return
+        remote_server = matched_remote_servers[0]
+        remote_server["websocket"] = None
+        self.remote_servers[remote_server["name"]] = remote_server
 
     # handling all the request or response from known exchange servers
+
     async def exchange_handler(self, websocket, server_name=None):
         try:
             remote_address = websocket.remote_address
@@ -290,16 +310,19 @@ class ExchangeServer:
 
                         # message validation
                         if not exchange_from or not exchange_to or not exchange_info:
-                            logger.warning(f"Incorrect message format: {message}")
+                            logger.warning(
+                                f"Incorrect message format: {message}")
                             continue
                         to_array = exchange_to.split("@")
                         if len(to_array) < 2:
-                            logger.warning(f"Incorrect receipent format: {exchange_to}")
+                            logger.warning(
+                                f"Incorrect receipent format: {exchange_to}")
                             continue
                         to_client = to_array[0]
                         to_server = to_array[1]
                         if to_server != self.server_name:
-                            logger.warning(f"Invalid receipent server: {to_server}")
+                            logger.warning(
+                                f"Invalid receipent server: {to_server}")
                             continue
                         if self.presences["LOCAL"].get(exchange_to, None):
                             logger.debug(f"forwarding to client {exchange_to}")
@@ -308,7 +331,8 @@ class ExchangeServer:
                                     exchange_info, exchange_from, to_client
                                 )
                             elif exchange_type == "file":
-                                exchange_filename = exchange.get("filename", f"{str(uuid.uuid4())}.tmp")
+                                exchange_filename = exchange.get(
+                                    "filename", f"{str(uuid.uuid4())}.tmp")
                                 await self.chat_server.handle_file_transfer(
                                     to_client, exchange_filename, exchange_info
                                 )
@@ -338,15 +362,19 @@ class ExchangeServer:
                     logger.warning(f"incorrect json format: {message}")
         except websockets.exceptions.ConnectionClosedOK:
             remote_address = websocket.remote_address
+            self.reset_websocket(remote_address)
             logger.info(f"Server {remote_address} closed the connection.")
         except websockets.exceptions.ConnectionClosedError as e:
             remote_address = websocket.remote_address
+            self.reset_websocket(remote_address)
             logger.error(
-                f"Connection {remote_address} closed with error: {e.code}, {e.reason}"
+                f"Connection {remote_address} closed with error: {
+                    e.code}, {e.reason}"
             )
         except Exception as e:
             logger.error(f"An error occurred: {str(e)}")
-
+            remote_address = websocket.remote_address
+            self.reset_websocket(remote_address)
 
     def start_server(self) -> websockets.serve:
         config = {}
@@ -370,8 +398,10 @@ class ExchangeServer:
     async def connect_websocket(self, remote_server):
         try:
             while True:
-                request_websocket = remote_server.get("request_websocket", None)
-                request_ws_url = f"ws://{remote_server['host']}:{remote_server['port']}"
+                request_websocket = remote_server.get(
+                    "request_websocket", None)
+                request_ws_url = f"ws://{remote_server['host']}:{
+                    remote_server['port']}"
                 # request_ws_url = f"wss://{remote_server['host']}"
                 if not request_websocket or request_websocket.closed:
                     try:
@@ -382,17 +412,23 @@ class ExchangeServer:
                                 "request_websocket"
                             ] = request_websocket
                             logger.info(
-                                f"Connection to {request_ws_url} successfully, sending attendance"
+                                f"Connection to {
+                                    request_ws_url} successfully, sending attendance"
                             )
                             await request_websocket.send(attendance_json())
                             await self.exchange_handler(
                                 request_websocket, remote_server["name"]
                             )
                     except websockets.WebSocketException as e:
-                        logger.warning(f"Connection to {request_ws_url} failed: {e}")
+                        self.reset_request_websocket(remote_server["name"])
+                        logger.warning(f"Connection to {
+                                       request_ws_url} failed: {e}")
                     except ConnectionRefusedError as e:
-                        logger.warning(f"Connection to {request_ws_url} failed: {e}")
+                        self.reset_request_websocket(remote_server["name"])
+                        logger.warning(f"Connection to {
+                                       request_ws_url} failed: {e}")
                     except TimeoutError as e:
+                        self.reset_request_websocket(remote_server["name"])
                         logger.warning(
                             f"Connection timeout {request_ws_url} failed: {e}"
                         )
