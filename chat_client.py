@@ -60,7 +60,7 @@ def get_current_timestamp():
     return timestamp.strftime("%Y%m%d_%H%M%S")
 
 
-# Generate RSA key pair
+# Generate RSA key pair as client startup
 local_private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 local_public_key = local_private_key.public_key()
 
@@ -85,6 +85,12 @@ def data_split(data:bytes, chunk_size:int):
 
 
 def base64_rsa_encrypt(data_bytes: bytes, public_key_pem: str) -> str:
+    """
+    Encrypts data using given RSA public key and base64.
+    Due to the limitation of RSA encryption, data is split into chunks of
+    190 bytes, then encrypt chunk by chunk and then combine all encrypted
+    chunks together, and finally apply base64 encoding.
+    """
     public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
     if not isinstance(public_key, rsa.RSAPublicKey):
         raise ValueError("Invalid public key format")
@@ -97,21 +103,27 @@ def base64_rsa_encrypt(data_bytes: bytes, public_key_pem: str) -> str:
 
 
 def base64_rsa_decrypt(encrypted_message: str) -> bytes:
+    """
+    Decrypts data using given RSA private key and base64.
+    Due to the limitation of RSA encryption, decoded data is split into chunks of
+    256 bytes, then decrypt chunk by chunk and then combine all decrypted
+    chunks together to restore original data
+    """
     decrypted_data = b''
     for data_chunk in data_split(base64.b64decode(encrypted_message), 256):
         decrypted_data += local_private_key.decrypt(data_chunk, default_padding)
     return decrypted_data
 
 
-def encrypt_message(message:str, public_key_pem:str):
-    return base64_rsa_encrypt(message.encode('utf-8'), public_key_pem)
+def encrypt_message(message: str, public_key_pem: str):
+    return base64_rsa_encrypt(message.encode("utf-8"), public_key_pem)
 
 
 def decrypt_message(encrypted_data):
     return base64_rsa_decrypt(encrypted_data).decode('utf-8')
 
 
-def encrypt_file_data(file_data:bytes, public_key_pem:str):
+def encrypt_file_data(file_data: bytes, public_key_pem: str):
     return base64_rsa_encrypt(file_data, public_key_pem)
 
 
@@ -129,6 +141,11 @@ def parse_json(json_str: str) -> dict:
 
 
 async def receive_messages(websocket):
+    """
+    Handler for received data from connected websocket.
+    It will save the received file to specific folder,
+    and it will display received message in console.
+    """
     try:
         while True:
             try:
@@ -178,6 +195,12 @@ async def receive_messages(websocket):
 
 
 async def start_client():
+    """
+    Start client and connect to chat server.
+    It will wait for user input for interacting with the chat server.
+    Interaction includes authentication, sending message, sending file,
+    and broadcasting message.
+    """
     config = {}
     with open("client_config.yaml", "r") as f:
         try:
@@ -190,6 +213,7 @@ async def start_client():
     uri = f"ws://{host}:{port}"
     try:
         async with websockets.connect(uri) as websocket:
+            # Authentication exchange
             while True:
                 response = await websocket.recv()
                 print(response)
@@ -210,16 +234,20 @@ async def start_client():
 
             receive_task = asyncio.create_task(receive_messages(websocket))
 
+            # User input exchange, includes sending message and file
             while True:
                 message = await asyncio.to_thread(input)
+                # special command to close the client
                 if message.strip().upper() == "EXIT":
                     await websocket.close()
                     await receive_task
                     break
+                # special command to send file
+                # expected format: FILE <user>@<server> <filepath>
                 elif message.startswith("FILE"):
                     parts = message.split(" ", 2)
                     if len(parts) < 3:
-                        print("Usage: FILE @username filepath")
+                        print("Usage: FILE username@server filepath")
                         continue
                     _, target_username, file_path = parts
                     try:
@@ -242,10 +270,13 @@ async def start_client():
                         logger.warning(f"File {file_path} not found.")
                     except Exception as e:
                         logger.error(f'unable to handle message: {e}')
+                # special command to display all current active users across servers
                 elif message.startswith("LIST"):
                     active_users = [f"{presence['nickname']}({presence['jid']})" for presence in current_presence]
                     print(f"active users: {active_users}")
                 else:
+                    # special command to send direct message
+                    # expected format: @<user>@<server> <message>
                     if message.startswith("@"):
                         try:
                             target_username_str, info = message.split(" ", 1)
@@ -267,7 +298,7 @@ async def start_client():
                         except ValueError as e:
                             logger.error(f'unable send message {message}: {e}')
                             continue
-
+                    # Assume to be broadcast message
                     if message:
                         await websocket.send(message)
                     else:
