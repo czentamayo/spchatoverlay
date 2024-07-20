@@ -67,28 +67,47 @@ default_padding = padding.OAEP(
 current_presence = []
 
 
-def base64_rsa_encrypt(message: str, public_key_pem: str) -> str:
-    public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
+# Split data into chunks
+def data_split(data:bytes, chunk_size:int):
+    chunks = []
+    for i in range(0, len(data), chunk_size):
+        chunks.append(data[i:i+chunk_size])
+    return chunks
 
+
+def base64_rsa_encrypt(data_bytes: bytes, public_key_pem: str) -> str:
+    public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
     if not isinstance(public_key, rsa.RSAPublicKey):
         raise ValueError("Invalid public key format")
+    encrypted_data = b''
+    for data_chunk in data_split(data_bytes, 190):
+        encrypted_data += public_key.encrypt(data_chunk, default_padding)
     return base64.b64encode(
-        public_key.encrypt(message.encode("utf-8"), default_padding)
+        encrypted_data
     ).decode("utf-8")
 
 
-def base64_rsa_decrypt(encrypted_message: str) -> str:
-    return local_private_key.decrypt(
-        base64.b64decode(encrypted_message), default_padding
-    ).decode("utf-8")
+def base64_rsa_decrypt(encrypted_message: str) -> bytes:
+    decrypted_data = b''
+    for data_chunk in data_split(base64.b64decode(encrypted_message), 256):
+        decrypted_data += local_private_key.decrypt(data_chunk, default_padding)
+    return decrypted_data
 
 
-def encrypt_file_data(file_data):
-    encrypted_data = base64.b64encode(file_data).decode('utf-8')
-    return encrypted_data
+def encrypt_message(message:str, public_key_pem:str):
+    return base64_rsa_encrypt(message.encode('utf-8'), public_key_pem)
+
+
+def decrypt_message(encrypted_data):
+    return base64_rsa_decrypt(encrypted_data).decode('utf-8')
+
+
+def encrypt_file_data(file_data:bytes, public_key_pem:str):
+    return base64_rsa_encrypt(file_data, public_key_pem)
+
 
 def decrypt_file_data(encrypted_data):
-    return base64.b64decode(encrypted_data)
+    return base64_rsa_decrypt(encrypted_data)
 
 
 # Convert json string to dict
@@ -131,10 +150,10 @@ async def receive_messages(websocket):
                             sender, encrypted_message = message.split(": ", 1)
                             if sender.startswith("@"):
                                 try:
-                                    real_msg = base64_rsa_decrypt(encrypted_message)
+                                    real_msg = decrypt_message(encrypted_message)
                                     print(sender[1:] + ": " + real_msg)
                                 except Exception as e:
-                                    print(f'decryption error: {e}')
+                                    logger.error(f'decryption error on  {encrypted_message}: {e}')
                             else:
                                 print(message)
                 else:
@@ -144,7 +163,7 @@ async def receive_messages(websocket):
                 break
             except Exception as e:
                 logger.error(f"Error receiving message: {e}")
-                traceback.print_exc()
+                logger.exception(traceback.print_exc())
                 break
     finally:
         await websocket.close()
@@ -197,31 +216,49 @@ async def start_client():
                         continue
                     _, target_username, file_path = parts
                     try:
+                        logger.debug(f'current presence: {current_presence}')
+                        full_target_username = f'{target_username}@s4'
+                        target_presence_array = [
+                            presence
+                            for presence in current_presence
+                            if presence["jid"] == full_target_username
+                        ]
+                        if len(target_presence_array) < 1:
+                            logger.warning(f"User {full_target_username} not present")
+                            continue
+                        target_presence = target_presence_array[0]
                         with open(file_path, "rb") as file:
                             file_name = os.path.basename(file_path)
                             file_data = file.read()
-                            encrypted_file_data = encrypt_file_data(file_data)
+                            encrypted_file_data = encrypt_file_data(file_data, target_presence["publickey"])
                             file_message = f"FILE {target_username} {file_name} {encrypted_file_data}"
                             await websocket.send(file_message)
                     except FileNotFoundError:
                         logger.warning(f"File {file_path} not found.")
+                    except Exception as e:
+                        logger.error(f'unable to handle message: {e}')
                 else:
                     if message.startswith("@"):
-                        target_username_str, info = message.split(" ", 1)
-                        target_username = target_username_str[1:]
-                        target_presence_array = [
-                            presence
-                            for presence in current_presence
-                            if presence["jid"] == target_username
-                        ]
-                        if len(target_presence_array) < 1:
+                        try:
+                            target_username_str, info = message.split(" ", 1)
+                            target_username = target_username_str[1:]
+                            target_presence_array = [
+                                presence
+                                for presence in current_presence
+                                if presence["jid"] == target_username
+                            ]
+                            if len(target_presence_array) < 1:
+                                logger.warning(f"User {target_username} not present")
+                                continue
+                            target_presence = target_presence_array[0]
+                            message = (
+                                target_username_str
+                                + " "
+                                + encrypt_message(info, target_presence["publickey"])
+                            )
+                        except ValueError as e:
+                            logger.error(f'unable send message {message}: {e}')
                             continue
-                        target_presence = target_presence_array[0]
-                        message = (
-                            target_username_str
-                            + " "
-                            + base64_rsa_encrypt(info, target_presence["publickey"])
-                        )
 
                     if message:
                         await websocket.send(message)
