@@ -227,8 +227,8 @@ async def start_client():
                     # send public key pem after authentication
                     await websocket.send(local_public_key_pem)
                     break
-                elif response == "Authentication failed":
-                    logger.warning("Authentication failed. Disconnecting.")
+                elif "Authentication failed" in str(response):
+                    logger.warning(f"{response}. Disconnecting.")
                     await websocket.close()
                     return
 

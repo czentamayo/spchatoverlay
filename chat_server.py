@@ -91,7 +91,11 @@ class ChatServer:
             password = (await websocket.recv()).strip()
             password = await self.hash_password(password)
             accounts = await self.load_accounts()
-            if username in accounts and accounts[username] == password:
+            if username in self.clients.keys():
+                logger.warning(f"Duplicate login attempt: {username}")
+                await websocket.send("Authentication failed: username already logged in")
+                return None, None
+            elif username in accounts and accounts[username] == password:
                 await websocket.send("Authentication successful")
                 user_pub_key = await websocket.recv()
                 return username, user_pub_key
