@@ -1,3 +1,12 @@
+###############################################
+#                  Group 4                    #
+###############################################
+#             Anlan Zou (a1899146)            #
+#     Czennen Trixter C Tamayo (a1904082)     #
+#           Yan Lok Chan (a1902578)           #
+#          Yu-Ting Huang (a1903622)           #
+###############################################
+
 import logging
 import logging.config
 import yaml
