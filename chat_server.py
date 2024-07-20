@@ -2,6 +2,13 @@ import logging
 import logging.config
 import yaml
 import os
+import sys
+import traceback
+import websockets
+import aiofiles
+import hashlib
+import base64
+from exchange_server import ExchangeServer
 
 log_directory = 'log'
 
@@ -20,13 +27,13 @@ logging.config.dictConfig(config)
 # Create logger
 logger = logging.getLogger(__name__)
 
-import traceback
-import websockets
-import aiofiles
-import hashlib
-import base64
-from exchange_server import ExchangeServer
+def log_unhandled_exception(exc_type, exc_value, exc_traceback):
+    # Log the unhandled exception with traceback
+    logger.exception("An unhandled exception occurred:", exc_info=(exc_type, exc_value, exc_traceback))
 
+
+# Set the custom exception handler
+sys.excepthook = log_unhandled_exception
 
 
 class ChatServer:
@@ -90,7 +97,7 @@ class ChatServer:
             while True:
                 message = await websocket.recv()
                 if message:
-                    logger.debug(f"Received from {username}: {message}")
+                    logger.debug(f"Forwarding from {username}: {message}")
                     if message.startswith("@"):
                         message_array = message.split(" ", 1)
                         if len(message_array) < 2:
@@ -110,7 +117,27 @@ class ChatServer:
                                 msg
                             )
                     elif message.startswith("FILE"):
-                        await self.handle_file_transfer(message, websocket)
+                        parts = message.split(" ", 3)
+                        if len(parts) < 4:
+                            logger.error("Invalid client FILE command")
+                            await websocket.send("Invalid FILE command")
+                            continue
+                        _, target_username, file_name, file_data = parts
+                        target_user_array = target_username.split("@")
+                        if len(target_user_array) < 2:
+                            # local file, e.g. c1 
+                            await self.handle_file_transfer(target_username, file_name, file_data, websocket)
+                        elif target_user_array[1] == self.server_name:
+                            # local file, e.g. c1@s4
+                            await self.handle_file_transfer(target_user_array[0], file_name, file_data, websocket)
+                        else:
+                            await self.exchange_server.send_file_to_server(
+                                f"{username}@{self.server_name}",
+                                target_user_array[1],
+                                target_user_array[0],
+                                file_name,
+                                file_data
+                            )
                     else:
                         hashed_message = await self.hash_password(message)
                         if ExchangeServer.sanitize_message(hashed_message):
@@ -121,6 +148,9 @@ class ChatServer:
                             await self.broadcast_message(
                                 f"{username}: {message}", websocket
                             )
+
+                            # broadcast message to all server
+                            await self.exchange_server.broadcast_message(f"{username}@{self.server_name}", message)
                 else:
                     await websocket.close()
                     await self.remove_client(websocket)
@@ -170,23 +200,29 @@ class ChatServer:
         await client.close()
         await self.remove_client(client)
 
-    async def handle_file_transfer(self, message, websocket):
-        parts = message.split(" ", 3)
-        if len(parts) < 4:
-            await websocket.send("Invalid FILE command")
-            return
+    # send message to all clients
+    async def send_message_to_all_clients(self, message, sender_username):
+        for target_socket in self.clients.values():
+            try:
+                await target_socket.send(
+                    f"BROADCAST from {sender_username}: {message}"
+                )
+            except:
+                await target_socket.close()
 
-        _, target_username, file_name, file_data = parts
+
+
+    async def handle_file_transfer(self, target_username, file_name, file_data, websocket=None):
         if target_username in self.clients:
             target_socket = self.clients[target_username]
             try:
-                await target_socket.send(f"FILE {file_name}")
-                await target_socket.send(file_data)
+                await target_socket.send(f"FILE {file_name} {file_data}")
             except:
                 await target_socket.close()
                 await self.remove_client(target_socket)
         else:
-            await websocket.send(f"User {target_username} not found.")
+            if websocket is not None:
+                await websocket.send(f"User {target_username} not found.")
 
 
     async def remove_client(self, websocket):
