@@ -195,7 +195,7 @@ class ChatServer:
         for target_socket in self.clients.values():
             try:
                 await target_socket.send(
-                    f"@{sender_username} to ALL: {message}"
+                    f"BROADCAST from {sender_username}: {message}"
                 )
             except:
                 await target_socket.close()

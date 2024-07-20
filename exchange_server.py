@@ -286,6 +286,7 @@ class ExchangeServer:
                         if exchange_to == 'public':
                             if exchange_type == "message":
                                 await self.chat_server.send_message_to_all_clients(exchange_info, exchange_from)
+                                continue
 
                         # message validation
                         if not exchange_from or not exchange_to or not exchange_info:
