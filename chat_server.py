@@ -106,6 +106,10 @@ class ChatServer:
                         target_array = target.split("@")
                         if len(target_array) < 3 or target_array[2] == self.server_name:
                             # local message, e.g. @c1, @c1@s4
+                            if msg.startswith("--"):
+                                parts = msg.split('--', 2)
+                                if len(parts) == 3:
+                                    _, username, msg = parts
                             await self.send_message_to_client(
                                 msg, username, target_array[1]
                             )

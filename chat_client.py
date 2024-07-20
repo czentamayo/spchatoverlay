@@ -258,9 +258,16 @@ async def start_client():
                                 logger.warning(f"User {target_username} not present")
                                 continue
                             target_presence = target_presence_array[0]
+                            sender = ''
+                            if info.startswith('--'):
+                                parts = info.split('--', 2)
+                                if len(parts) == 3:
+                                    sender = f"--{parts[1]}--"
+                                    info = parts[2]
                             message = (
                                 target_username_str
                                 + " "
+                                + sender
                                 + encrypt_message(info, target_presence["publickey"])
                             )
                         except ValueError as e:
