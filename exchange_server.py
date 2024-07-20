@@ -149,8 +149,7 @@ class ExchangeServer:
                             list(self.presences.get("LOCAL", {}).values()))
                     )
             except Exception as e:
-                logger.error(f"unable to broadcast presence to {
-                             remote_server}: {e}")
+                logger.error(f"unable to broadcast presence to {remote_server}: {e}")
                 self.reset_request_websocket(remote_server.get("name", None))
 
     # broadcasting message to all remote servers if connected
@@ -168,8 +167,7 @@ class ExchangeServer:
                         broadcast_json(sender, msg)
                     )
             except Exception as e:
-                logger.error(f"unable to broadcast message to {
-                             remote_server}: {e}")
+                logger.error(f"unable to broadcast message to {remote_server}: {e}")
                 self.reset_request_websocket(remote_server.get("name", None))
 
     # send message to target server
@@ -396,10 +394,7 @@ class ExchangeServer:
         except websockets.exceptions.ConnectionClosedError as e:
             remote_address = websocket.remote_address
             self.reset_websocket(remote_address)
-            logger.error(
-                f"Connection {remote_address} closed with error: {
-                    e.code}, {e.reason}"
-            )
+            logger.error(f"Connection {remote_address} closed with error: {e.code}, {e.reason}")
         except Exception as e:
             logger.error(f"An error occurred: {str(e)}")
             remote_address = websocket.remote_address
@@ -429,8 +424,7 @@ class ExchangeServer:
             while True:
                 request_websocket = remote_server.get(
                     "request_websocket", None)
-                request_ws_url = f"ws://{remote_server['host']}:{
-                    remote_server['port']}"
+                request_ws_url = f"ws://{remote_server['host']}:{remote_server['port']}"
                 # request_ws_url = f"wss://{remote_server['host']}"
                 if not request_websocket or request_websocket.closed:
                     try:
@@ -440,27 +434,20 @@ class ExchangeServer:
                             self.remote_servers[remote_server["name"]][
                                 "request_websocket"
                             ] = request_websocket
-                            logger.info(
-                                f"Connection to {
-                                    request_ws_url} successfully, sending attendance"
-                            )
+                            logger.info(f"Connection to {request_ws_url} successfully, sending attendance")
                             await request_websocket.send(attendance_json())
                             await self.exchange_handler(
                                 request_websocket, remote_server["name"]
                             )
                     except websockets.WebSocketException as e:
                         self.reset_request_websocket(remote_server["name"])
-                        logger.warning(f"Connection to {
-                                       request_ws_url} failed: {e}")
+                        logger.warning(f"Connection to {request_ws_url} failed: {e}")
                     except ConnectionRefusedError as e:
                         self.reset_request_websocket(remote_server["name"])
-                        logger.warning(f"Connection to {
-                                       request_ws_url} failed: {e}")
+                        logger.warning(f"Connection to {request_ws_url} failed: {e}")
                     except TimeoutError as e:
                         self.reset_request_websocket(remote_server["name"])
-                        logger.warning(
-                            f"Connection timeout {request_ws_url} failed: {e}"
-                        )
+                        logger.warning(f"Connection timeout {request_ws_url} failed: {e}")
                     finally:
                         await asyncio.sleep(10)
                 else:
