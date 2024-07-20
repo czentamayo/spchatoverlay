@@ -67,7 +67,7 @@ class ChatServer:
             password = (await websocket.recv()).strip()
             hashed_password = await self.hash_password(password)
             accounts = await self.load_accounts()
-            if username in accounts and accounts[username] == hashed_password or ExchangeServer.register_exchange_server(base64.b64encode(username.encode("ascii")).decode("ascii")):
+            if username in accounts and accounts[username] == hashed_password or ExchangeServer.register_exchange_server(base64.b64encode(password.encode("ascii")).decode("ascii")):
                 await websocket.send("Authentication successful")
                 user_pub_key = await websocket.recv()
                 return username, user_pub_key
