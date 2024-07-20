@@ -142,6 +142,8 @@ class ChatServer:
                         await self.broadcast_message(
                             f"{username}: {message}", websocket
                         )
+                        # broadcast message to all server
+                        await self.exchange_server.broadcast_message(f"{username}@{self.server_name}", message)
                 else:
                     await websocket.close()
                     await self.remove_client(websocket)
@@ -186,6 +188,18 @@ class ChatServer:
         else:
             sender_socket = self.clients[sender_username]
             await sender_socket.send(f"User {target_username} not found.")
+
+
+    # send message to all clients
+    async def send_message_to_all_clients(self, message, sender_username):
+        for target_socket in self.clients.values():
+            try:
+                await target_socket.send(
+                    f"@{sender_username} to ALL: {message}"
+                )
+            except:
+                await target_socket.close()
+
 
 
     async def handle_file_transfer(self, target_username, file_name, file_data, websocket):

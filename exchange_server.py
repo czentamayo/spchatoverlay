@@ -10,7 +10,7 @@ import websockets
 import asyncio
 
 
-log_directory = 'log'
+log_directory = "log"
 
 # Create the log directory if it doesn't exist
 if not os.path.exists(log_directory):
@@ -18,7 +18,7 @@ if not os.path.exists(log_directory):
 
 
 # Load logging configuration from YAML file
-with open('server_logging.yaml', 'r') as config_file:
+with open("server_logging.yaml", "r") as config_file:
     config = yaml.safe_load(config_file)
 
 # Configure logging based on the YAML configuration
@@ -30,7 +30,10 @@ logger = logging.getLogger(__name__)
 
 def log_unhandled_exception(exc_type, exc_value, exc_traceback):
     # Log the unhandled exception with traceback
-    logger.exception("An unhandled exception occurred:", exc_info=(exc_type, exc_value, exc_traceback))
+    logger.exception(
+        "An unhandled exception occurred:",
+        exc_info=(exc_type, exc_value, exc_traceback),
+    )
 
 
 # Set the custom exception handler
@@ -51,6 +54,18 @@ def message_json(sender: str, recipient: str, info: str) -> str:
             "tag": "message",
             "from": sender,
             "to": recipient,
+            "info": info,
+        }
+    )
+
+
+# Json to broadcast message
+def broadcast_json(sender: str, info: str) -> str:
+    return json.dumps(
+        {
+            "tag": "message",
+            "from": sender,
+            "to": "public",
             "info": info,
         }
     )
@@ -130,33 +145,64 @@ class ExchangeServer:
                     presence_json(list(self.presences.get("LOCAL", {}).values()))
                 )
 
-    async def send_message_to_server(self, sender:str, target_server:str, target_client:str, msg:str):
+    # broadcasting message to all remote servers if connected
+    async def broadcast_message(self, sender:str, msg: str):
+        logger.debug(f'broadcasting message from {sender}: {msg}')
+        for remote_server in self.remote_servers.values():
+            if remote_server.get("request_websocket", None):
+                await remote_server["request_websocket"].send(
+                    broadcast_json(sender, msg)
+                )
+            elif remote_server.get("websocket", None):
+                await remote_server["websocket"].send(
+                    broadcast_json(sender, msg)
+                )
+
+
+    async def send_message_to_server(
+        self, sender: str, target_server: str, target_client: str, msg: str
+    ):
         remote_server = self.remote_servers.get(target_server, None)
         logger.debug(remote_server)
         if remote_server:
             if remote_server.get("request_websocket", None):
                 await remote_server["request_websocket"].send(
-                    message_json(sender, f'{target_client}@{target_server}', msg)
+                    message_json(sender, f"{target_client}@{target_server}", msg)
                 )
             elif remote_server.get("websocket", None):
                 await remote_server["websocket"].send(
-                    message_json(sender, f'{target_client}@{target_server}', msg)
+                    message_json(sender, f"{target_client}@{target_server}", msg)
                 )
 
-
-    async def send_file_to_server(self, sender:str, target_server:str, target_client:str, filename:str, encrypted_file_data:str):
+    async def send_file_to_server(
+        self,
+        sender: str,
+        target_server: str,
+        target_client: str,
+        filename: str,
+        encrypted_file_data: str,
+    ):
         remote_server = self.remote_servers.get(target_server, None)
-        logger.debug(f'sending file from {sender} to {remote_server}')
+        logger.debug(f"sending file from {sender} to {remote_server}")
         if remote_server:
             if remote_server.get("request_websocket", None):
                 await remote_server["request_websocket"].send(
-                    file_json(sender, f'{target_client}@{target_server}', filename, encrypted_file_data)
+                    file_json(
+                        sender,
+                        f"{target_client}@{target_server}",
+                        filename,
+                        encrypted_file_data,
+                    )
                 )
             elif remote_server.get("websocket", None):
                 await remote_server["websocket"].send(
-                    file_json(sender, f'{target_client}@{target_server}', filename, encrypted_file_data)
+                    file_json(
+                        sender,
+                        f"{target_client}@{target_server}",
+                        filename,
+                        encrypted_file_data,
+                    )
                 )
-
 
     async def update_presence(
         self, server_name: str, client_jid: str, nickname: str, publickey: str
@@ -168,12 +214,15 @@ class ExchangeServer:
             {client_jid: Presence(nickname, client_jid, publickey)}
         )
         self.presences[server_name] = target_server_presences
-        flatten_presence = [value for sublist in self.presences.values() for value in sublist.values()]
+        flatten_presence = [
+            value for sublist in self.presences.values() for value in sublist.values()
+        ]
         if server_name == "LOCAL":
             await self.broadcast_presence()
             await self.chat_server.broadcast_presence(presence_json(flatten_presence))
         else:
             await self.chat_server.broadcast_presence(presence_json(flatten_presence))
+
 
     async def remove_presence(self, server_name: str, client_jid: str):
         target_server_presence = self.presences.get(server_name, dict())
@@ -181,11 +230,17 @@ class ExchangeServer:
         self.presences[server_name] = target_server_presence
         if server_name == "LOCAL":
             await self.broadcast_presence()
-            flatten_presence = [value for sublist in self.presences.values() for value in sublist.values()]
+            flatten_presence = [
+                value
+                for sublist in self.presences.values()
+                for value in sublist.values()
+            ]
             await self.chat_server.broadcast_presence(presence_json(flatten_presence))
+
 
     def get_presences(self) -> dict:
         return self.presences
+
 
     # handling all the request or response from known exchange servers
     async def exchange_handler(self, websocket, server_name=None):
@@ -199,7 +254,9 @@ class ExchangeServer:
                 ]
                 # disconnect if unknown server
                 if not matched_remote_servers:
-                    logger.warning(f"Unknown server: {remote_address}, disconnecting...")
+                    logger.warning(
+                        f"Unknown server: {remote_address}, disconnecting..."
+                    )
                     await websocket.close()
                     return
                 remote_server = matched_remote_servers[0]
@@ -217,13 +274,16 @@ class ExchangeServer:
             self.remote_servers[remote_server["name"]] = remote_server
             async for message in websocket:
                 try:
-                    logger.debug(f"Received from exchange server: {message}" )
+                    logger.debug(f"Received from exchange server: {message}")
                     exchange = parse_json(str(message))
                     exchange_type = exchange.get("tag", None)
                     if exchange_type == "message":
                         exchange_from = exchange.get("from", None)
                         exchange_to = exchange.get("to", None)
                         exchange_info = exchange.get("info", None)
+
+                        if exchange_to == 'public':
+                            await self.chat_server.send_message_to_all_clients(exchange_info, exchange_from)
 
                         # message validation
                         if not exchange_from or not exchange_to or not exchange_info:
@@ -235,11 +295,11 @@ class ExchangeServer:
                         to_server = to_array[1]
                         if to_server != self.server_name:
                             continue
-                        if self.presences['LOCAL'].get(exchange_to, None):
+                        if self.presences["LOCAL"].get(exchange_to, None):
                             logger.debug("forwarding to client")
                             await self.chat_server.send_message_to_client(
                                 exchange_info, exchange_from, to_client
-                        )
+                            )
                     elif exchange_type == "file":
                         pass
                     elif exchange_type == "check":
@@ -247,7 +307,9 @@ class ExchangeServer:
                         await websocket.send(check_json(True))
                     elif exchange_type == "attendance":
                         await websocket.send(
-                            presence_json(list(self.presences.get("LOCAL", {}).values()))
+                            presence_json(
+                                list(self.presences.get("LOCAL", {}).values())
+                            )
                         )
                     elif exchange_type == "presence":
                         for presence in exchange.get("presence", []):
@@ -265,11 +327,13 @@ class ExchangeServer:
             logger.info(f"Server {remote_address} closed the connection.")
         except websockets.exceptions.ConnectionClosedError as e:
             remote_address = websocket.remote_address
-            logger.error(f"Connection {remote_address} closed with error: {e.code}, {e.reason}")
+            logger.error(
+                f"Connection {remote_address} closed with error: {e.code}, {e.reason}"
+            )
         except Exception as e:
             logger.error(f"An error occurred: {str(e)}")
 
-                
+
     def start_server(self) -> websockets.serve:
         config = {}
         with open("server_config.yaml", "r") as f:
@@ -289,7 +353,6 @@ class ExchangeServer:
         port = exchange_server_config.get("port", 5555)
         return websockets.serve(self.exchange_handler, host, port)
 
-
     async def connect_websocket(self, remote_server):
         try:
             while True:
@@ -298,17 +361,27 @@ class ExchangeServer:
                 # request_ws_url = f"wss://{remote_server['host']}"
                 if not request_websocket or request_websocket.closed:
                     try:
-                        async with websockets.connect(request_ws_url) as request_websocket:
-                            self.remote_servers[remote_server["name"]]["request_websocket"] = request_websocket
-                            logger.info(f"Connection to {request_ws_url} successfully, sending attendance")
+                        async with websockets.connect(
+                            request_ws_url
+                        ) as request_websocket:
+                            self.remote_servers[remote_server["name"]][
+                                "request_websocket"
+                            ] = request_websocket
+                            logger.info(
+                                f"Connection to {request_ws_url} successfully, sending attendance"
+                            )
                             await request_websocket.send(attendance_json())
-                            await self.exchange_handler(request_websocket, remote_server["name"])
+                            await self.exchange_handler(
+                                request_websocket, remote_server["name"]
+                            )
                     except websockets.WebSocketException as e:
                         logger.warning(f"Connection to {request_ws_url} failed: {e}")
                     except ConnectionRefusedError as e:
                         logger.warning(f"Connection to {request_ws_url} failed: {e}")
                     except TimeoutError as e:
-                        logger.warning(f"Connection timeout {request_ws_url} failed: {e}")
+                        logger.warning(
+                            f"Connection timeout {request_ws_url} failed: {e}"
+                        )
                     finally:
                         await asyncio.sleep(10)
                 else:
@@ -316,10 +389,8 @@ class ExchangeServer:
         except asyncio.CancelledError:
             logger.error("connect websocket was cancelled.")
 
-
     def connect_remote_servers(self):
         tasks = []
         for remote_server in self.remote_servers.values():
             tasks.append(self.connect_websocket(remote_server))
         return tasks
-
