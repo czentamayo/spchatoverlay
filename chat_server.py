@@ -177,8 +177,7 @@ class ChatServer:
         if target_username in self.clients:
             target_socket = self.clients[target_username]
             try:
-                await target_socket.send(f"FILE {file_name}")
-                await target_socket.send(file_data)
+                await target_socket.send(f"FILE {file_name} {file_data}")
             except:
                 await target_socket.close()
                 await self.remove_client(target_socket)

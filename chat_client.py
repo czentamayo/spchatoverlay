@@ -13,10 +13,14 @@ import traceback
 import sys
 
 log_directory = 'log'
+download_directory = 'download'
 
 # Create the log directory if it doesn't exist
 if not os.path.exists(log_directory):
     os.makedirs(log_directory)
+
+if not os.path.exists(download_directory):
+    os.makedirs(download_directory)
 
 # Load logging configuration from YAML file
 with open('client_logging.yaml', 'r') as config_file:
@@ -36,6 +40,15 @@ def log_unhandled_exception(exc_type, exc_value, exc_traceback):
 
 # Set the custom exception handler
 sys.excepthook = log_unhandled_exception
+
+from datetime import datetime
+
+
+def get_current_timestamp():
+    # Get the current timestamp
+    timestamp = datetime.now()
+    # Convert the timestamp to a string
+    return timestamp.strftime("%Y%m%d_%H%M%S")
 
 
 # Generate RSA key pair
@@ -71,8 +84,11 @@ def base64_rsa_decrypt(encrypted_message: str) -> str:
 
 
 def encrypt_file_data(file_data):
-    encrypted_data = base64.b64encode(file_data).decode("utf-8")
+    encrypted_data = base64.b64encode(file_data).decode('utf-8')
     return encrypted_data
+
+def decrypt_file_data(encrypted_data):
+    return base64.b64decode(encrypted_data)
 
 
 # Convert json string to dict
@@ -90,11 +106,15 @@ async def receive_messages(websocket):
             try:
                 message = await websocket.recv()
                 if message.startswith("FILE"):
-                    file_name = message.split(" ", 1)[1]
-                    file_data = await websocket.recv()
-                    with open(file_name, "wb") as file:
-                        file.write(base64.b64decode(file_data))
-                    print(f"Received file {file_name}")
+                    file_part = message.split(" ", 2)
+                    if len(file_part) < 3:
+                        logger.error('Incorrect FILE message format')
+                        continue
+                    _, file_name, file_data = file_part
+                    full_file_path = f'{download_directory}/{file_name}.{get_current_timestamp()}'
+                    with open(full_file_path, "wb") as file:
+                        file.write(decrypt_file_data(file_data))
+                    print(f"Received file {full_file_path}")
                 elif message:
                     # special handling for updating presence, which contains public key
                     if "tag" in message and "presence" in message:
@@ -178,9 +198,10 @@ async def start_client():
                     _, target_username, file_path = parts
                     try:
                         with open(file_path, "rb") as file:
+                            file_name = os.path.basename(file_path)
                             file_data = file.read()
                             encrypted_file_data = encrypt_file_data(file_data)
-                            file_message = f"FILE {target_username} {file_path} {encrypted_file_data}"
+                            file_message = f"FILE {target_username} {file_name} {encrypted_file_data}"
                             await websocket.send(file_message)
                     except FileNotFoundError:
                         logger.warning(f"File {file_path} not found.")

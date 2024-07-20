@@ -5,12 +5,13 @@ chat_server:
   port: 12342
 exchange_server:
   # host: 10.13.101.145
-  host: 172.16.11.7
+  # host: 172.16.11.7
+  host: localhost
   port: 5555
-remote_servers:
-  - name: s1
-    host: 10.13.84.131
-    port: 5555
+# remote_servers:
+#   - name: s1
+#     host: 10.13.84.131
+#     port: 5555
   # - name: s3
   #   host: 10.13.83.163
   #   port: 5555
