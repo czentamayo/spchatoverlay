@@ -140,8 +140,6 @@ async def receive_messages(websocket):
                         presence_json = parse_json(message)
                         global current_presence
                         current_presence = presence_json["presence"]
-                        active_users = [f"{presence['nickname']}({presence['jid']})" for presence in current_presence]
-                        print(f"active users: {active_users}")
                     else:
                         msg_split = message.split(": ", 1)
                         if len(msg_split) < 2:
@@ -235,6 +233,9 @@ async def start_client():
                         logger.warning(f"File {file_path} not found.")
                     except Exception as e:
                         logger.error(f'unable to handle message: {e}')
+                elif message.startswith("LIST"):
+                    active_users = [f"{presence['nickname']}({presence['jid']})" for presence in current_presence]
+                    print(f"active users: {active_users}")
                 else:
                     if message.startswith("@"):
                         try:
@@ -262,6 +263,7 @@ async def start_client():
                         await websocket.send(message)
                     else:
                         print("Error: Cannot Print Empty Message!")
+
     except websockets.ConnectionClosed:
         logger.info("Connection closed by server.")
     except Exception as e:
