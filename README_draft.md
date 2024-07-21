@@ -31,7 +31,7 @@ List any software or tools needed before installing.
 
 ## Usage
 ### 1. Server and Client Configuration
-##### 1.1 Set Up the Server Configuration [server_config.yaml]
+##### 1.1 Set Up the Server Configuration [server/server_config.yaml]
 ```
 server_name: s1
 chat_server:
@@ -49,7 +49,7 @@ remote_servers:
 #    host: <ip_addr_of_remote_server>
 #    port: <port_intergroup_chat>
 ```
-##### 1.2 Set Up the Client Configuration [client_config.yaml]
+##### 1.2 Set Up the Client Configuration [client/client_config.yaml]
 ```
 chat_server
 host: <chat_server_ip>
@@ -57,14 +57,21 @@ port: <chat_server_port>
 ```
 ### 2. Start the Chat System
 ##### 2.1 Start the Server
+Open a new terminal
+**Make sure you are in the `server/` directory**
 Command to start the chat server:
 ```
+cd server
 python secure_chatapp.py
 ```
 ![Alt Text](snapshot/server_start.png)<img width="100">
 
 ##### 2.2 Start the Client:
+Open a new terminal
+**Make sure you are in the `client/` directory**
+Command to start the chat client:
 ```
+cd client
 python chat_client.py
 ```
 ![Alt Text](snapshot/client_start.png)<img width="100">
@@ -125,9 +132,17 @@ EXIT
 ![Alt Text](snapshot/test_sheet.jpeg)<img width="100">
 
 ### 2. Regression Test
-Regression Test can be run with the following command:
+Regression Test can be run within the corresponding server/client directory
+
+#### Server `./server/`
 ```python
-pytest -v ./test_regression.py
+python -m pytest -v ./test_server.py
+
+```
+
+#### Client `./client/`
+```python
+python -m pytest -v ./test_client.py
 
 ```
 
