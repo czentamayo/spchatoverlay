@@ -6,6 +6,8 @@
 #           Yan Lok Chan (a1902578)           #
 #          Yu-Ting Huang (a1903622)           #
 ###############################################
+#         WARNING: VULNERABLE VERSION         #
+###############################################
 
 import logging
 import logging.config

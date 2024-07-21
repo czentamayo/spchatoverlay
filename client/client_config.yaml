@@ -6,6 +6,8 @@
 #           Yan Lok Chan (a1902578)           #
 #          Yu-Ting Huang (a1903622)           #
 ###############################################
+#         WARNING: VULNERABLE VERSION         #
+###############################################
 
 # where client should connect to 
 chat_server:

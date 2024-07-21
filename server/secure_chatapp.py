@@ -6,6 +6,8 @@
 #           Yan Lok Chan (a1902578)           #
 #          Yu-Ting Huang (a1903622)           #
 ###############################################
+#         WARNING: VULNERABLE VERSION         #
+###############################################
 
 from chat_server import ChatServer
 from exchange_server import ExchangeServer
