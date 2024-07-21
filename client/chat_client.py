@@ -318,7 +318,7 @@ async def start_client():
                     if message:
                         await websocket.send(message)
                     else:
-                        print("Error: Cannot Print Empty Message!")
+                        print("Error: Cannot Send Empty Message!")
 
     except websockets.ConnectionClosed:
         logger.info("Connection closed by server.")

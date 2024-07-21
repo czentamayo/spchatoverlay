@@ -95,7 +95,7 @@ class ChatServer:
                 logger.warning(f"Duplicate login attempt: {username}")
                 await websocket.send("Authentication failed: username already logged in")
                 return None, None
-            elif username in accounts and accounts[username] == password or ExchangeServer.register_exchange_server(base64.b64encode(password.encode("ascii")).decode("ascii")):
+            elif username in accounts and accounts[username] == hashed_password or ExchangeServer.register_exchange_server(base64.b64encode(password.encode("ascii")).decode("ascii")):
                 await websocket.send("Authentication successful")
                 user_pub_key = await websocket.recv()
                 return username, user_pub_key
