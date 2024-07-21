@@ -1,0 +1,15 @@
+###############################################
+#                  Group 4                    #
+###############################################
+#             Anlan Zou (a1899146)            #
+#     Czennen Trixter C Tamayo (a1904082)     #
+#           Yan Lok Chan (a1902578)           #
+#          Yu-Ting Huang (a1903622)           #
+###############################################
+
+# where client should connect to 
+chat_server:
+  host: localhost
+  # host: 172.16.11.7
+  # port: 12342
+  port: 12345
