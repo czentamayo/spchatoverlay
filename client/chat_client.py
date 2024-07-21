@@ -20,6 +20,7 @@ import base64
 import json
 import traceback
 import sys
+import getpass
 
 log_directory = 'log'
 download_directory = 'download'
@@ -217,12 +218,12 @@ async def start_client():
             while True:
                 response = await websocket.recv()
                 print(response)
-                if (
-                    response == "Enter your username: "
-                    or response == "Enter your password: "
-                ):
-                    message = input()
-                    await websocket.send(message)
+                if response == "Enter your username: ":
+                    username = input()
+                    await websocket.send(username)
+                elif response == "Enter your password: ":
+                    password = getpass.getpass("")
+                    await websocket.send(password)
                 elif response == "Authentication successful":
                     # send public key pem after authentication
                     await websocket.send(local_public_key_pem)
