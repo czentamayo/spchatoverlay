@@ -172,10 +172,10 @@ class ChatServer:
                         target_user_array = target_username.split("@")
                         if len(target_user_array) < 2:
                             # local client, e.g. c1 
-                            await self.handle_file_transfer(target_username, file_name, file_data, websocket)
+                            await self.handle_file_transfer(username, target_username, file_name, file_data, websocket)
                         elif target_user_array[1] == self.server_name:
                             # local client, e.g. c1@s4
-                            await self.handle_file_transfer(target_user_array[0], file_name, file_data, websocket)
+                            await self.handle_file_transfer(username, target_user_array[0], file_name, file_data, websocket)
                         else:
                             # remote client
                             await self.exchange_server.send_file_to_server(
@@ -265,12 +265,13 @@ class ChatServer:
                 await target_socket.close()
 
     # Send file to local user
-    async def handle_file_transfer(self, target_username, file_name, file_data, websocket=None):
+    async def handle_file_transfer(self, sender_username, target_username, file_name, file_data, websocket=None):
         if target_username in self.clients:
             target_socket = self.clients[target_username]
             try:
-                await target_socket.send(f"FILE {file_name} {file_data}")
-            except:
+                await target_socket.send(f"FILE {sender_username} {file_data} {file_name}")
+            except Exception as e:
+                logger.error(f"unable to send file from {sender_username} to {target_username}: {e}")
                 await target_socket.close()
                 await self.remove_client(target_socket)
         else:
