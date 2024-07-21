@@ -58,7 +58,9 @@ port: <chat_server_port>
 ### 2. Start the Chat System
 ##### 2.1 Start the Server
 Open a new terminal
+
 **Make sure you are in the `server/` directory**
+
 Command to start the chat server:
 ```
 cd server
@@ -68,7 +70,9 @@ python secure_chatapp.py
 
 ##### 2.2 Start the Client:
 Open a new terminal
+
 **Make sure you are in the `client/` directory**
+
 Command to start the chat client:
 ```
 cd client
