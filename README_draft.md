@@ -49,7 +49,30 @@ remote_servers:
 #    host: <ip_addr_of_remote_server>
 #    port: <port_intergroup_chat>
 ```
-##### 1.2 Set Up the Client Configuration [client/client_config.yaml]
+
+##### 1.2 Create New Account in Server [server/register.py]
+**Make sure you are in the `./server/` directory**
+
+```bash
+cd server
+```
+
+Inside the `./server/` directory, run the following command to start a registration process:
+```
+python register.py
+```
+
+The existing account for testing:
+
+passwords for c1 - c5:
+1. potato
+2. watermelon
+3. banana
+4. coconut
+5. apple
+
+
+##### 1.3 Set Up the Client Configuration [client/client_config.yaml]
 ```
 chat_server
 host: <chat_server_ip>
@@ -59,11 +82,14 @@ port: <chat_server_port>
 ##### 2.1 Start the Server
 Open a new terminal
 
-**Make sure you are in the `server/` directory**
+**Make sure you are in the `./server/` directory**
+
+```bash
+cd server
+```
 
 Command to start the chat server:
 ```
-cd server
 python secure_chatapp.py
 ```
 ![Alt Text](snapshot/server_start.png)<img width="100">
@@ -71,7 +97,11 @@ python secure_chatapp.py
 ##### 2.2 Start the Client:
 Open a new terminal
 
-**Make sure you are in the `client/` directory**
+**Make sure you are in the `./server/` directory**
+
+```bash
+cd client
+```
 
 Command to start the chat client:
 ```
