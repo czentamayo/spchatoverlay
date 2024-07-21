@@ -193,6 +193,7 @@ async def receive_messages(websocket):
     finally:
         await websocket.close()
         logger.info("Connection closed gracefully.")
+        logger.info("Please press Enter to exit ....")
 
 
 async def start_client():
@@ -238,6 +239,8 @@ async def start_client():
             # User input exchange, includes sending message and file
             while True:
                 message = await asyncio.to_thread(input)
+                if websocket.closed:
+                    break
                 # special command to close the client
                 if message.strip().upper() == "EXIT":
                     await websocket.close()
