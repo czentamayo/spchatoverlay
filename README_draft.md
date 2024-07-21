@@ -19,15 +19,43 @@ Features include:
 
 
 ## Installation
-Step-by-step instructions on how to install and set up the project.
+### Setup environment
+#### Windows user
+In the project root directory, run the following command in cmd or powershell to setup the environment:
+```cmd
+.\win_venv\Scripts\activate
+```
 
-### Prerequisites
-List any software or tools needed before installing.
+To deactivate the environment:
+```cmd
+deactivate
+```
 
+#### Mac or Linux user
+In the project root directory, run the following command in bash to setup the environment:
+```bash
+source .\unix_venv\Scripts\activate
+```
+To deactivate the environment:
+```bash
+deactivate
+```
 ### Installing
-1. Step 1
-2. Step 2
-3. Step 3
+Here is a list of dependencies for the project:
+```
+aiofiles==24.1.0
+cryptography==42.0.8
+PyYAML==6.0.1
+websockets==12.0
+pytest==8.3.1
+```
+
+After activating environment, install requirements with `pip`:
+```
+pip install -r requirements.txt
+```
+
+User can now start running the chat system
 
 ## Usage
 ### 1. Server and Client Configuration
