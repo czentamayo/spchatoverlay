@@ -21,7 +21,7 @@ Features include:
 ## Installation
 ### Setup environment
 #### Windows user
-In the project root directory, run the following command in cmd or powershell to setup the environment:
+In the project root directory, run the following command in cmd to setup the environment:
 ```cmd
 .\win_venv\Scripts\activate
 ```
