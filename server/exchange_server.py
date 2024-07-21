@@ -428,7 +428,8 @@ class ExchangeServer:
                                 )
                             elif exchange_type == "file":
                                 exchange_filename = exchange.get(
-                                    "filename", f"{str(uuid.uuid4())}.tmp")
+                                    "filename", f"{str(uuid.uuid4())}.tmp"
+                                ).replace(" ", "_")
                                 await self.chat_server.handle_file_transfer(
                                     to_client, exchange_filename, exchange_info
                                 )
