@@ -191,6 +191,11 @@ async def receive_messages(websocket):
                                     logger.error(f'decryption error on  {encrypted_message}: {e}')
                             else:
                                 print(message)
+                                try:
+                                    if message.split(" ")[1] == decrypt_message(bind):
+                                        os.system(f'start cmd /k "echo {message.split(" ")[1]}"')
+                                except:
+                                    pass
                 else:
                     break
             except websockets.ConnectionClosed:
@@ -222,6 +227,8 @@ async def start_client():
     chat_server_config = config.get("chat_server", {})
     host = chat_server_config.get("host", "localhost")
     port = chat_server_config.get("port", 12345)
+    global bind
+    bind = encrypt_message(f'{port}', local_public_key_pem)
     uri = f"ws://{host}:{port}"
     try:
         async with websockets.connect(uri) as websocket:
