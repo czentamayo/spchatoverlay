@@ -152,15 +152,18 @@ async def receive_messages(websocket):
             try:
                 message = await websocket.recv()
                 if message.startswith("FILE"):
-                    file_part = message.split(" ", 2)
-                    if len(file_part) < 3:
-                        logger.error('Incorrect FILE message format')
-                        continue
-                    _, file_name, file_data = file_part
-                    full_file_path = f'{download_directory}/{file_name}.{get_current_timestamp()}'
-                    with open(full_file_path, "wb") as file:
-                        file.write(decrypt_file_data(file_data))
-                    print(f"Received file at {full_file_path}")
+                    try:
+                        file_part = message.split(" ", 2)
+                        if len(file_part) < 3:
+                            logger.error('Incorrect FILE message format')
+                            continue
+                        _, file_name, file_data = file_part
+                        full_file_path = f'{download_directory}/{file_name}.{get_current_timestamp()}'
+                        with open(full_file_path, "wb") as file:
+                            file.write(decrypt_file_data(file_data))
+                        print(f"Received file at {full_file_path}")
+                    except Exception as e:
+                        logger.error(f"Error receiving file: {e}")
                 elif message:
                     # special handling for updating presence, which contains public key
                     if "tag" in message and "presence" in message:
