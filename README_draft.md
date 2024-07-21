@@ -21,24 +21,16 @@ Features include:
 ## Installation
 ### Prerequisties
 - Python 3.9 or above
+- Installation of `venv` and `pip`
 
 ### Setup environment
 #### Windows user
 In the project root directory, run the following command in cmd to setup the environment:
 ```cmd
-.\win_venv\Scripts\activate
-```
-
-To deactivate the environment:
-```cmd
-.\win_venv\Scripts\deactivate
-```
-
-In the case of permission issues, try the following command:
-```cmd
 python -m venv my_venv
 .\my_venv\Scripts\activate
 ```
+To deactivate the environment:
 ```cmd
 .\my_venv\Scripts\deactivate
 ```
@@ -46,15 +38,9 @@ python -m venv my_venv
 #### Mac or Linux user
 In the project root directory, run the following command in bash to setup the environment:
 ```bash
-source ./unix_venv/bin/activate
-```
-
-In the case of permission issues, try the following command:
-```bash
 python -m venv my_venv
 ./my_venv/bin/activate
 ```
-
 To deactivate the environment:
 ```bash
 deactivate
