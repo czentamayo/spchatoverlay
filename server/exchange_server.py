@@ -333,7 +333,7 @@ class ExchangeServer:
                 "request_websocket"
             ] = None
 
-    def reset_websocket(self, server_ip: str):
+    async def reset_websocket(self, server_ip: str):
         matched_remote_servers = [
             server
             for server in self.remote_servers.values()
@@ -344,6 +344,7 @@ class ExchangeServer:
         remote_server = matched_remote_servers[0]
         remote_server["websocket"] = None
         self.remote_servers[remote_server["name"]] = remote_server
+        await self.update_group_presence(remote_server["name"], [])
 
     async def exchange_handler(self, websocket, server_name=None):
         """
@@ -461,16 +462,19 @@ class ExchangeServer:
                     logger.warning(f"incorrect json format: {message}")
         except websockets.exceptions.ConnectionClosedOK:
             remote_address = websocket.remote_address
-            self.reset_websocket(remote_address)
             logger.info(f"Server {remote_address} closed the connection.")
+            if len(remote_address) > 0:
+                await self.reset_websocket(remote_address[0])
         except websockets.exceptions.ConnectionClosedError as e:
             remote_address = websocket.remote_address
-            self.reset_websocket(remote_address)
             logger.error(f"Connection {remote_address} closed with error: {e.code}, {e.reason}")
+            if len(remote_address) > 0:
+                await self.reset_websocket(remote_address[0])
         except Exception as e:
-            logger.error(f"An error occurred: {str(e)}")
             remote_address = websocket.remote_address
-            self.reset_websocket(remote_address)
+            logger.error(f"An error occurred: {str(e)}")
+            if len(remote_address) > 0:
+                await self.reset_websocket(remote_address[0])
 
     def start_server(self) -> websockets.serve:
         """
