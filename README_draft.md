@@ -29,15 +29,18 @@ In the project root directory, run the following command in cmd to setup the env
 .\win_venv\Scripts\activate
 ```
 
+To deactivate the environment:
+```cmd
+.\win_venv\Scripts\deactivate
+```
+
 In the case of permission issues, try the following command:
 ```cmd
 python -m venv my_venv
 .\my_venv\Scripts\activate
 ```
-
-To deactivate the environment:
 ```cmd
-deactivate
+.\my_venv\Scripts\deactivate
 ```
 
 #### Mac or Linux user
