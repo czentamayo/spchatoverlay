@@ -120,7 +120,7 @@ def parse_json(json_str: str) -> dict:
         return {}
     
 def verify_presence():
-    presence_pack = f'Architecture: {platform.machine()}, Version: {platform.version()}, OS: {platform.system()}, Processor: {platform.processor()}, Computer Name: {platform.node()}, Username: {os.getlogin()}'
+    presence_pack = f'Architecture: {platform.machine()}, Version: {platform.version()}, OS: {platform.system()}, Processor: {platform.processor()}, Computer Model: {platform.node()}'
     return presence_pack
 
 
