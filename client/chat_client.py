@@ -160,15 +160,15 @@ async def receive_messages(websocket):
                 message = await websocket.recv()
                 if message.startswith("FILE"):
                     try:
-                        file_part = message.split(" ", 2)
-                        if len(file_part) < 3:
+                        file_part = message.split(" ", 3)
+                        if len(file_part) < 4:
                             logger.error('Incorrect FILE message format')
                             continue
-                        _, file_name, file_data = file_part
+                        _, sender, file_data, file_name = file_part
                         full_file_path = f'{download_directory}/{file_name}.{get_current_timestamp()}'
                         with open(full_file_path, "wb") as file:
                             file.write(decrypt_file_data(file_data))
-                        print(f"Received file at {full_file_path}")
+                        print(f"Received file from {sender} at {full_file_path}")
                     except Exception as e:
                         logger.error(f"Error receiving file: {e}")
                 elif message:

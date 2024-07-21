@@ -46,13 +46,13 @@ python -m venv my_venv
 #### Mac or Linux user
 In the project root directory, run the following command in bash to setup the environment:
 ```bash
-source .\unix_venv\Scripts\activate
+source ./unix_venv/bin/activate
 ```
 
 In the case of permission issues, try the following command:
-```cmd
+```bash
 python -m venv my_venv
-.\my_venv\Scripts\activate
+./my_venv/bin/activate
 ```
 
 To deactivate the environment:

@@ -431,7 +431,7 @@ class ExchangeServer:
                                     "filename", f"{str(uuid.uuid4())}.tmp"
                                 ).replace(" ", "_")
                                 await self.chat_server.handle_file_transfer(
-                                    to_client, exchange_filename, exchange_info
+                                    exchange_from, to_client, exchange_filename, exchange_info
                                 )
                         else:
                             logger.warning(f"User {exchange_to} not presence")
